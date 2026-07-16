@@ -242,6 +242,8 @@ export interface WebsiteConfig {
   heroImageUrl?: string;
   title?: string;
   subtitle?: string;
+  story?: string;
+  schedule?: { title: string; time: string; description?: string }[];
   showGiftRegistry: boolean;
   showRsvp: boolean;
   showGallery: boolean;
@@ -291,4 +293,40 @@ export interface ApiResponse<T> {
   data?: T;
   message?: string;
   error?: string;
+}
+
+export interface BillingSubscription {
+  plan: 'free' | 'premium' | 'planner';
+  status: 'active' | 'cancelled' | 'past_due' | 'trialing';
+  price: number;
+  currency: string;
+  nextBillingDate: string | null;
+  cancelledAt: string | null;
+  gateway: string;
+}
+
+export interface BillingUsage {
+  guests: { current: number; limit: number };
+  photos: { current: number; limit: number };
+  memories: { current: number; limit: number };
+  menuItems: { current: number; limit: number };
+  crewMembers: { current: number; limit: number };
+}
+
+export interface Invoice {
+  id: string;
+  date: string;
+  plan: string;
+  amount: number;
+  currency: string;
+  status: 'completed' | 'pending' | 'failed';
+  gateway: string;
+}
+
+export interface PlanDefinition {
+  id: 'free' | 'premium' | 'planner';
+  name: string;
+  price: number;
+  features: string[];
+  popular?: boolean;
 }

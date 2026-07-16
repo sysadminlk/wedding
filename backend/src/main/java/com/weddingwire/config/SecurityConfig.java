@@ -34,6 +34,7 @@ public class SecurityConfig {
                 .requestMatchers(
                     "/api/auth/**",
                     "/api/public/**",
+                    "/api/payments/webhook/**",
                     "/w/**",
                     "/share/**",
                     "/install/**",
