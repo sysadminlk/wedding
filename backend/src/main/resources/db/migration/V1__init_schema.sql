@@ -399,6 +399,40 @@ CREATE TABLE demo_configs (
 );
 
 -- =============================================
+-- FLOOR PLAN (3D room editor data)
+-- =============================================
+
+CREATE TABLE floor_plans (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE UNIQUE,
+    room_width FLOAT DEFAULT 20,
+    room_depth FLOAT DEFAULT 15,
+    elements JSONB DEFAULT '[]',
+    camera_position JSONB DEFAULT '{}',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =============================================
+-- CASH GIFT DONATIONS
+-- =============================================
+
+CREATE TABLE cash_gift_donations (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE,
+    cash_fund_id UUID REFERENCES cash_funds(id) ON DELETE CASCADE,
+    guest_id UUID REFERENCES guests(id) ON DELETE SET NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    currency VARCHAR(3) DEFAULT 'USD',
+    status VARCHAR(20) DEFAULT 'pending',
+    gateway VARCHAR(30),
+    gateway_transaction_id VARCHAR(255),
+    message TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =============================================
 -- INDEXES
 -- =============================================
 
@@ -426,6 +460,9 @@ CREATE INDEX idx_collaborators_tenant ON collaborators(tenant_id);
 CREATE INDEX idx_invitations_tenant ON collaborator_invitations(tenant_id);
 CREATE INDEX idx_subscriptions_tenant ON subscriptions(tenant_id);
 CREATE INDEX idx_invoices_tenant ON invoices(tenant_id);
+CREATE INDEX idx_floor_plans_tenant ON floor_plans(tenant_id);
+CREATE INDEX idx_cash_donations_tenant ON cash_gift_donations(tenant_id);
+CREATE INDEX idx_cash_donations_fund ON cash_gift_donations(cash_fund_id);
 
 -- Guest search
 CREATE INDEX idx_guests_name ON guests(tenant_id, name);
