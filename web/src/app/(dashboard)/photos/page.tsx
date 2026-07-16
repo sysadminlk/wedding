@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { Camera, X, ZoomIn, Download, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Camera, X, ZoomIn, Download, ChevronLeft, ChevronRight, Upload } from 'lucide-react';
 import { Photo } from '@/types';
 import { PageHeader } from '@/components/dashboard/PageHeader';
 import { Button } from '@/components/ui/Button';
@@ -14,12 +14,22 @@ interface PhotoResponse {
   number: number;
 }
 
+interface UploadFile {
+  file: File;
+  caption: string;
+  status: 'pending' | 'uploading' | 'done' | 'error';
+  error?: string;
+}
+
 export default function PhotosPage() {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [uploadQueue, setUploadQueue] = useState<UploadFile[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchPhotos = useCallback(async (pageNum: number) => {
     setLoading(true);
@@ -39,6 +49,75 @@ export default function PhotosPage() {
   useEffect(() => {
     fetchPhotos(page);
   }, [page, fetchPhotos]);
+
+  const processUploadQueue = useCallback(async (queue: UploadFile[]) => {
+    setUploading(true);
+    for (let i = 0; i < queue.length; i++) {
+      const item = queue[i];
+      if (item.status !== 'pending') continue;
+      try {
+        setUploadQueue(prev =>
+          prev.map((q, idx) => (idx === i ? { ...q, status: 'uploading' as const } : q))
+        );
+
+        const presignedRes = await fetch('/api/upload/presigned', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fileName: item.file.name,
+            contentType: item.file.type,
+            category: 'photos',
+          }),
+        });
+        if (!presignedRes.ok) throw new Error('Failed to get presigned URL');
+        const { uploadUrl, s3Key } = await presignedRes.json();
+
+        const putRes = await fetch(uploadUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': item.file.type },
+          body: item.file,
+        });
+        if (!putRes.ok) throw new Error('Failed to upload file');
+
+        const confirmRes = await fetch('/api/photos/upload/confirm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ s3Key, caption: item.caption }),
+        });
+        if (!confirmRes.ok) throw new Error('Failed to confirm upload');
+
+        setUploadQueue(prev =>
+          prev.map((q, idx) => (idx === i ? { ...q, status: 'done' as const } : q))
+        );
+      } catch (err) {
+        setUploadQueue(prev =>
+          prev.map((q, idx) =>
+            idx === i ? { ...q, status: 'error' as const, error: 'Upload failed' } : q
+          )
+        );
+      }
+    }
+    setUploading(false);
+    fetchPhotos(0);
+    setPage(0);
+    setTimeout(() => setUploadQueue([]), 2000);
+  }, [fetchPhotos]);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    const queue: UploadFile[] = files.map(file => ({
+      file,
+      caption: '',
+      status: 'pending',
+    }));
+    setUploadQueue(queue);
+    e.target.value = '';
+  };
+
+  const updateUploadCaption = (index: number, caption: string) => {
+    setUploadQueue(prev => prev.map((q, idx) => (idx === index ? { ...q, caption } : q)));
+  };
 
   const openLightbox = (index: number) => setLightboxIndex(index);
   const closeLightbox = () => setLightboxIndex(null);
@@ -78,16 +157,99 @@ export default function PhotosPage() {
       <PageHeader
         title="Wedding Photos"
         actions={
-          <Button
-            variant="primary"
-            className="font-label"
-            style={{ backgroundColor: '#d4af37' }}
-          >
-            <Camera size={16} className="mr-2" />
-            Upload Photos
-          </Button>
+          <>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={handleFileSelect}
+            />
+            <Button
+              variant="primary"
+              className="font-label"
+              style={{ backgroundColor: '#d4af37' }}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Camera size={16} className="mr-2" />
+              Upload Photos
+            </Button>
+          </>
         }
       />
+
+      {uploadQueue.length > 0 && (
+        <div
+          className="mx-6 mb-6 rounded-xl border p-4"
+          style={{
+            backgroundColor: 'var(--color-dashboard-surface)',
+            borderColor: 'var(--color-dashboard-border)',
+          }}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Upload size={16} style={{ color: '#d4af37' }} />
+              <span className="font-label text-sm font-semibold" style={{ color: 'var(--color-dashboard-text)' }}>
+                Uploading {uploadQueue.length} photo{uploadQueue.length > 1 ? 's' : ''}
+              </span>
+            </div>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => processUploadQueue(uploadQueue)}
+              disabled={uploading}
+              loading={uploading}
+              style={{ backgroundColor: '#d4af37' }}
+            >
+              <Upload size={14} className="mr-1.5" />
+              Start Upload
+            </Button>
+          </div>
+          <div className="space-y-3 max-h-64 overflow-y-auto">
+            {uploadQueue.map((item, index) => (
+              <div key={index} className="flex items-center gap-3">
+                <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg border" style={{ borderColor: 'var(--color-dashboard-border)' }}>
+                  <img
+                    src={URL.createObjectURL(item.file)}
+                    alt=""
+                    className="h-full w-full object-cover"
+                  />
+                  {item.status === 'done' && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-green-500/80">
+                      <span className="text-white text-xs font-bold">Done</span>
+                    </div>
+                  )}
+                  {item.status === 'error' && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-red-500/80">
+                      <span className="text-white text-xs font-bold">Err</span>
+                    </div>
+                  )}
+                </div>
+                <input
+                  type="text"
+                  placeholder="Add a caption..."
+                  value={item.caption}
+                  onChange={(e) => updateUploadCaption(index, e.target.value)}
+                  className="flex-1 rounded-lg border px-3 py-2 text-sm font-body outline-none focus:ring-2 focus:ring-[#d4af37]/50"
+                  style={{
+                    backgroundColor: 'var(--color-dashboard-surface)',
+                    borderColor: 'var(--color-dashboard-border)',
+                    color: 'var(--color-dashboard-text)',
+                  }}
+                  disabled={item.status === 'uploading' || item.status === 'done'}
+                />
+                {item.status === 'uploading' && (
+                  <span className="text-xs font-body" style={{ color: '#d4af37' }}>Uploading...</span>
+                )}
+                {item.status === 'error' && (
+                  <span className="text-xs font-body text-red-500">{item.error}</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {loading && photos.length === 0 ? (
         <div className="flex items-center justify-center py-24">
