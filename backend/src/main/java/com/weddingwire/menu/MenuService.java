@@ -1,9 +1,9 @@
 package com.weddingwire.menu;
 
 import com.weddingwire.common.ResourceNotFoundException;
+import com.weddingwire.storage.StorageService;
+import com.weddingwire.storage.UploadConfirmRequest;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.UUID;
@@ -13,25 +13,30 @@ import java.util.UUID;
 public class MenuService {
 
     private final MenuRepository repo;
+    private final StorageService storageService;
 
-    public Page<MenuPage> findAll(UUID tenantId, Pageable pageable) {
-        return repo.findByTenantIdOrderByOrderIndexAsc(tenantId, pageable);
+    public List<MenuPage> findAll(UUID tenantId) {
+        return repo.findAllByTenantIdOrderByOrderIndexAsc(tenantId);
     }
 
-    public MenuPage create(UUID tenantId, MenuRequest request) {
+    public MenuPage create(UUID tenantId, String s3Key, String title, Integer orderIndex) {
         MenuPage page = MenuPage.builder()
                 .tenantId(tenantId)
-                .s3Key(request.getS3Key())
-                .title(request.getTitle())
-                .orderIndex(request.getOrderIndex())
+                .s3Key(s3Key)
+                .title(title)
+                .orderIndex(orderIndex)
                 .build();
         return repo.save(page);
     }
 
-    public void delete(UUID tenantId, UUID id) {
-        repo.findByTenantIdAndId(tenantId, id)
-                .orElseThrow(() -> new ResourceNotFoundException("MenuPage", "id", id));
-        repo.deleteByTenantIdAndId(tenantId, id);
+    public MenuPage confirmUpload(UUID tenantId, UploadConfirmRequest request) {
+        MenuPage page = MenuPage.builder()
+                .tenantId(tenantId)
+                .s3Key(request.getS3Key())
+                .title(request.getTitle())
+                .orderIndex(request.getOrderIndex() != null ? request.getOrderIndex() : 0)
+                .build();
+        return repo.save(page);
     }
 
     public void reorder(UUID tenantId, List<UUID> orderedIds) {
@@ -45,5 +50,16 @@ public class MenuService {
         }
     }
 
-    public long count(UUID tenantId) { return repo.countByTenantId(tenantId); }
+    public String getUrl(UUID pageId) {
+        MenuPage page = repo.findById(pageId)
+                .orElseThrow(() -> new ResourceNotFoundException("MenuPage", "id", pageId));
+        return storageService.generatePresignedGetUrl(page.getS3Key());
+    }
+
+    public void delete(UUID tenantId, UUID pageId) {
+        MenuPage page = repo.findByTenantIdAndId(tenantId, pageId)
+                .orElseThrow(() -> new ResourceNotFoundException("MenuPage", "id", pageId));
+        storageService.deleteFile(page.getS3Key());
+        repo.delete(page);
+    }
 }

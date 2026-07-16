@@ -1,5 +1,6 @@
 package com.weddingwire.tenant;
 
+import com.weddingwire.qr.QrCodeService;
 import com.weddingwire.user.UserTenant;
 import com.weddingwire.user.UserTenantRepository;
 import jakarta.persistence.EntityManager;
@@ -19,6 +20,7 @@ public class TenantService {
 
     private final TenantRepository tenantRepository;
     private final UserTenantRepository userTenantRepository;
+    private final QrCodeService qrCodeService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -44,6 +46,9 @@ public class TenantService {
                 .build();
 
         userTenantRepository.save(userTenant);
+
+        String qrUrl = "https://weddingwire.lk/share/" + tenant.getSlug();
+        qrCodeService.generateAndUploadQrCode(tenant.getId(), qrUrl);
 
         return tenant;
     }

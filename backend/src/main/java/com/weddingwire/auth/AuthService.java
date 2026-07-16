@@ -5,6 +5,7 @@ import com.weddingwire.user.User;
 import com.weddingwire.user.UserRepository;
 import com.weddingwire.user.UserTenant;
 import com.weddingwire.user.UserTenantRepository;
+import com.weddingwire.email.EmailService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,7 @@ public class AuthService {
     private final UserTenantRepository userTenantRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final EmailService emailService;
 
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
@@ -37,8 +39,7 @@ public class AuthService {
 
         userRepository.save(user);
 
-        // TODO: Send verification email via Resend/SMTP
-        System.out.println("Verification code for " + user.getEmail() + ": " + verificationCode);
+        emailService.sendVerificationEmail(user.getEmail(), user.getName(), verificationCode);
 
         return AuthResponse.builder()
                 .message("Registration successful. Please verify your email.")
@@ -117,8 +118,7 @@ public class AuthService {
         user.setResetExpiresAt(LocalDateTime.now().plusMinutes(15));
         userRepository.save(user);
 
-        // TODO: Send reset email via Resend/SMTP
-        System.out.println("Reset code for " + user.getEmail() + ": " + resetCode);
+        emailService.sendResetPasswordEmail(user.getEmail(), user.getName(), resetCode);
 
         return AuthResponse.builder()
                 .message("If the email exists, a reset code has been sent.")

@@ -50,11 +50,23 @@ app:
 
   email:
     provider: smtp
+    resend:
+      api-key: ""
+      from-name: weddingWire
+      from-email: noreply@weddingwire.lk
     smtp:
       host: localhost
       port: 1025
       username: ""
       password: ""
+      from: noreply@weddingwire.lk
+
+  sms:
+    enabled: false
+    twilio:
+      account-sid: ""
+      auth-token: ""
+      from-number: ""
 
   payhere:
     merchant-id: sandbox
@@ -120,6 +132,13 @@ app:
     merchant-id: ${PAYHERE_MERCHANT_ID}
     secret: ${PAYHERE_SECRET}
     sandbox: ${PAYHERE_SANDBOX:false}
+
+  sms:
+    enabled: ${SMS_ENABLED:false}
+    twilio:
+      account-sid: ${TWILIO_ACCOUNT_SID:}
+      auth-token: ${TWILIO_AUTH_TOKEN:}
+      from-number: ${TWILIO_FROM_NUMBER:}
 
   demo:
     enabled: false
