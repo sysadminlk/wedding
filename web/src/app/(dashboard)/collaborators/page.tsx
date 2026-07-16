@@ -1,7 +1,24 @@
 'use client';
 
-import { useState } from 'react';
-import { UserPlus, Mail, Shield, Trash2, X, Users, Crown } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import {
+  UserPlus,
+  Mail,
+  Shield,
+  Trash2,
+  X,
+  Users,
+  Crown,
+  Send,
+  RefreshCw,
+  AlertCircle,
+  Check,
+  ChevronDown,
+  Clock,
+  ArrowRightLeft,
+  CheckCircle2,
+  XCircle,
+} from 'lucide-react';
 import { PageHeader } from '@/components/dashboard/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -14,7 +31,19 @@ interface Collaborator extends UserTenant {
   joinedAt: string;
 }
 
+interface Invitation {
+  id: string;
+  email: string;
+  role: string;
+  permissions: TenantPermissions;
+  invitedBy: string;
+  expiresAt: string;
+  status: 'pending' | 'accepted' | 'expired' | 'revoked';
+  createdAt: string;
+}
+
 type Role = UserTenant['role'];
+type PermissionLevel = 'none' | 'read' | 'write';
 
 const ROLE_CONFIG: Record<Role, { label: string; color: string; bg: string }> = {
   partner: { label: 'Partner', color: '#d4af37', bg: '#d4af3720' },
@@ -43,10 +72,16 @@ const SECTION_LABELS: Record<keyof TenantPermissions, string> = {
   emailTemplates: 'Email Templates',
 };
 
-const PERMISSION_ICON_COLOR: Record<string, string> = {
+const PERMISSION_COLORS: Record<PermissionLevel, string> = {
   write: '#16a34a',
   read: '#d4af37',
   none: '#6b7280',
+};
+
+const PERMISSION_BG: Record<PermissionLevel, string> = {
+  write: '#16a34a18',
+  read: '#d4af3718',
+  none: '#00000008',
 };
 
 const DEFAULT_PERMISSIONS: Record<Role, TenantPermissions> = {
@@ -82,71 +117,9 @@ const DEFAULT_PERMISSIONS: Record<Role, TenantPermissions> = {
   },
 };
 
-const MOCK_COLLABORATORS: Collaborator[] = [
-  {
-    id: 'col-1',
-    userId: 'u-1',
-    tenantId: 't-1',
-    name: 'Sarah Mitchell',
-    email: 'sarah.mitchell@email.com',
-    role: 'partner',
-    permissions: DEFAULT_PERMISSIONS.partner,
-    joinedAt: '2026-01-15',
-  },
-  {
-    id: 'col-2',
-    userId: 'u-2',
-    tenantId: 't-1',
-    name: 'James Mitchell',
-    email: 'james.mitchell@email.com',
-    role: 'partner',
-    permissions: DEFAULT_PERMISSIONS.partner,
-    joinedAt: '2026-01-15',
-  },
-  {
-    id: 'col-3',
-    userId: 'u-3',
-    tenantId: 't-1',
-    name: 'Elena Torres',
-    email: 'elena@weddingplanners.co',
-    role: 'planner',
-    permissions: DEFAULT_PERMISSIONS.planner,
-    joinedAt: '2026-02-01',
-  },
-  {
-    id: 'col-4',
-    userId: 'u-4',
-    tenantId: 't-1',
-    name: 'David Chen',
-    email: 'david.chen@email.com',
-    role: 'family',
-    permissions: DEFAULT_PERMISSIONS.family,
-    joinedAt: '2026-03-10',
-  },
-  {
-    id: 'col-5',
-    userId: 'u-5',
-    tenantId: 't-1',
-    name: 'Priya Sharma',
-    email: 'priya.s@email.com',
-    role: 'friend',
-    permissions: DEFAULT_PERMISSIONS.friend,
-    joinedAt: '2026-03-22',
-  },
-  {
-    id: 'col-6',
-    userId: 'u-6',
-    tenantId: 't-1',
-    name: 'Marco Benedetti',
-    email: 'marco@bflorals.com',
-    role: 'vendor',
-    permissions: DEFAULT_PERMISSIONS.vendor,
-    joinedAt: '2026-04-05',
-  },
-];
-
-function RoleBadge({ role }: { role: Role }) {
-  const config = ROLE_CONFIG[role];
+function RoleBadge({ role }: { role: string }) {
+  const config = ROLE_CONFIG[role as Role];
+  if (!config) return null;
   return (
     <span
       className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-label font-semibold"
@@ -158,68 +131,80 @@ function RoleBadge({ role }: { role: Role }) {
   );
 }
 
-function PermissionDot({ level }: { level: 'read' | 'write' | 'none' }) {
-  if (level === 'none') {
-    return <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: '#e5e7eb' }} />;
-  }
+function PermissionDot({ level }: { level: PermissionLevel }) {
   return (
     <span
       className="inline-block w-2 h-2 rounded-full"
-      style={{ backgroundColor: PERMISSION_ICON_COLOR[level] }}
-      title={level}
+      style={{ backgroundColor: PERMISSION_COLORS[level] }}
     />
   );
 }
 
-function InviteForm({ onClose }: { onClose: () => void }) {
+function InviteModal({ onClose, onInvited }: { onClose: () => void; onInvited: () => void }) {
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<Role>('friend');
+  const [permissions, setPermissions] = useState<TenantPermissions>(DEFAULT_PERMISSIONS.friend);
   const [sending, setSending] = useState(false);
-  const [sent, setSent] = useState(false);
+  const [error, setError] = useState('');
+  const [showPermissions, setShowPermissions] = useState(false);
+
+  const cyclePermission = (section: keyof TenantPermissions) => {
+    setPermissions((prev) => {
+      const current = prev[section];
+      const next: PermissionLevel = current === 'none' ? 'read' : current === 'read' ? 'write' : 'none';
+      return { ...prev, [section]: next };
+    });
+  };
+
+  const handleRoleChange = (newRole: Role) => {
+    setRole(newRole);
+    setPermissions(DEFAULT_PERMISSIONS[newRole]);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSending(true);
-    await new Promise((r) => setTimeout(r, 800));
-    setSending(false);
-    setSent(true);
-    setTimeout(() => {
+    setError('');
+    try {
+      const res = await fetch('/api/collaborators/invitations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email, role, permissions }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || 'Failed to send invitation');
+      }
+      onInvited();
       onClose();
-    }, 1500);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Something went wrong');
+    } finally {
+      setSending(false);
+    }
   };
-
-  if (sent) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-        <Card className="w-full max-w-md p-6 text-center">
-          <div className="w-12 h-12 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ backgroundColor: '#16a34a20' }}>
-            <Mail size={24} style={{ color: '#16a34a' }} />
-          </div>
-          <h3 className="font-heading text-lg font-bold" style={{ color: 'var(--color-dashboard-text)' }}>
-            Invitation Sent
-          </h3>
-          <p className="font-body text-sm mt-1" style={{ color: 'var(--color-dashboard-text-secondary)' }}>
-            An invitation has been sent to {email}
-          </p>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <Card className="w-full max-w-md p-6">
+      <Card className="w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-heading" style={{ color: 'var(--color-dashboard-text)' }}>
+          <h2 className="text-xl font-heading font-bold" style={{ color: 'var(--color-dashboard-text)' }}>
             Invite Collaborator
           </h2>
-          <button onClick={onClose} className="p-1 rounded-lg transition-colors hover:bg-black/5">
+          <button onClick={onClose} className="p-1.5 rounded-lg transition-colors hover:bg-black/5">
             <X size={20} style={{ color: 'var(--color-dashboard-text-secondary)' }} />
           </button>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {error && (
+            <div className="flex items-center gap-2 p-3 rounded-lg text-sm font-body" style={{ backgroundColor: '#ffdad6', color: '#93000a' }}>
+              <AlertCircle size={16} />
+              {error}
+            </div>
+          )}
           <div>
-            <label className="block text-sm font-label mb-1.5" style={{ color: 'var(--color-dashboard-text-secondary)' }}>
+            <label className="block text-xs font-label uppercase tracking-wider mb-1.5" style={{ color: 'var(--color-dashboard-text-secondary)' }}>
               Email Address
             </label>
             <input
@@ -228,7 +213,7 @@ function InviteForm({ onClose }: { onClose: () => void }) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="colleague@email.com"
-              className="w-full px-3 py-2.5 rounded-lg border font-body text-sm"
+              className="w-full px-4 py-3 rounded-xl border font-body text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-[#d4af37]"
               style={{
                 borderColor: 'var(--color-dashboard-border)',
                 backgroundColor: 'var(--color-dashboard-surface)',
@@ -237,16 +222,16 @@ function InviteForm({ onClose }: { onClose: () => void }) {
             />
           </div>
           <div>
-            <label className="block text-sm font-label mb-1.5" style={{ color: 'var(--color-dashboard-text-secondary)' }}>
+            <label className="block text-xs font-label uppercase tracking-wider mb-1.5" style={{ color: 'var(--color-dashboard-text-secondary)' }}>
               Role
             </label>
             <div className="grid grid-cols-2 gap-2">
-              {(Object.keys(ROLE_CONFIG) as Role[]).map((r) => (
+              {(Object.keys(ROLE_CONFIG) as Role[]).filter((r) => r !== 'partner').map((r) => (
                 <button
                   key={r}
                   type="button"
-                  onClick={() => setRole(r)}
-                  className="px-3 py-2.5 rounded-lg border font-label text-sm capitalize transition-all"
+                  onClick={() => handleRoleChange(r)}
+                  className="px-3 py-2.5 rounded-xl border font-label text-sm capitalize transition-all"
                   style={{
                     borderColor: role === r ? ROLE_CONFIG[r].color : 'var(--color-dashboard-border)',
                     backgroundColor: role === r ? ROLE_CONFIG[r].bg : 'var(--color-dashboard-surface)',
@@ -259,30 +244,56 @@ function InviteForm({ onClose }: { onClose: () => void }) {
               ))}
             </div>
           </div>
-          <Card className="p-3">
-            <div className="flex items-start gap-2">
-              <Shield size={16} className="mt-0.5 shrink-0" style={{ color: '#d4af37' }} />
-              <div>
-                <p className="font-label text-xs font-semibold" style={{ color: 'var(--color-dashboard-text)' }}>
-                  Default permissions for {ROLE_CONFIG[role].label}
-                </p>
-                <p className="font-body text-xs mt-0.5" style={{ color: 'var(--color-dashboard-text-secondary)' }}>
-                  {role === 'partner' && 'Full access to all sections. Can manage billing and settings.'}
-                  {role === 'planner' && 'Write access to most sections. Read-only on guest memories and gifts.'}
-                  {role === 'family' && 'Read access to dashboard, guests, timeline, photos, and more.'}
-                  {role === 'friend' && 'Can view timeline, photos, and upload guest memories.'}
-                  {role === 'vendor' && 'Limited access to timeline and vendor section only.'}
-                </p>
+          <div>
+            <button
+              type="button"
+              onClick={() => setShowPermissions(!showPermissions)}
+              className="flex items-center gap-2 text-sm font-label font-semibold transition-colors"
+              style={{ color: '#d4af37' }}
+            >
+              <Shield size={14} />
+              Customize Permissions
+              <ChevronDown size={14} className={`transition-transform ${showPermissions ? 'rotate-180' : ''}`} />
+            </button>
+            {showPermissions && (
+              <div className="mt-3 space-y-1">
+                {(Object.keys(SECTION_LABELS) as (keyof TenantPermissions)[]).map((section) => (
+                  <div
+                    key={section}
+                    className="flex items-center justify-between px-3 py-2 rounded-lg transition-colors hover:bg-black/3"
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => cyclePermission(section)}
+                  >
+                    <span className="font-body text-sm" style={{ color: 'var(--color-dashboard-text)' }}>
+                      {SECTION_LABELS[section]}
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      {(['none', 'read', 'write'] as PermissionLevel[]).map((level) => (
+                        <span
+                          key={level}
+                          className="px-2 py-0.5 rounded text-xs font-label font-medium transition-all"
+                          style={{
+                            backgroundColor: permissions[section] === level ? PERMISSION_BG[level] : 'transparent',
+                            color: permissions[section] === level ? PERMISSION_COLORS[level] : 'var(--color-dashboard-text-secondary)',
+                            border: permissions[section] === level ? `1px solid ${PERMISSION_COLORS[level]}30` : '1px solid transparent',
+                          }}
+                        >
+                          {level.charAt(0).toUpperCase() + level.slice(1)}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
-          </Card>
+            )}
+          </div>
           <div className="flex gap-3 pt-2">
             <Button type="button" onClick={onClose} variant="secondary" className="flex-1">
               Cancel
             </Button>
             <Button type="submit" disabled={sending} className="flex-1">
-              <UserPlus size={16} className="mr-2" />
-              {sending ? 'Sending...' : 'Send Invite'}
+              <Send size={16} className="mr-2" />
+              {sending ? 'Sending...' : 'Send Invitation'}
             </Button>
           </div>
         </form>
@@ -291,8 +302,77 @@ function InviteForm({ onClose }: { onClose: () => void }) {
   );
 }
 
-function PermissionMatrix({ collaborators }: { collaborators: Collaborator[] }) {
-  const roles = Array.from(new Set(collaborators.map((c) => c.role)));
+function TransferOwnershipModal({
+  collaborator,
+  onClose,
+  onTransferred,
+}: {
+  collaborator: Collaborator;
+  onClose: () => void;
+  onTransferred: () => void;
+}) {
+  const [transferring, setTransferring] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleTransfer = async () => {
+    setTransferring(true);
+    setError('');
+    try {
+      const res = await fetch(`/api/collaborators/${collaborator.id}/transfer-ownership`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || 'Failed to transfer ownership');
+      }
+      onTransferred();
+      onClose();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Something went wrong');
+    } finally {
+      setTransferring(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <Card className="w-full max-w-md p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-heading font-bold" style={{ color: 'var(--color-dashboard-text)' }}>
+            Transfer Ownership
+          </h2>
+          <button onClick={onClose} className="p-1.5 rounded-lg transition-colors hover:bg-black/5">
+            <X size={20} style={{ color: 'var(--color-dashboard-text-secondary)' }} />
+          </button>
+        </div>
+        {error && (
+          <div className="flex items-center gap-2 p-3 rounded-lg text-sm font-body mb-4" style={{ backgroundColor: '#ffdad6', color: '#93000a' }}>
+            <AlertCircle size={16} />
+            {error}
+          </div>
+        )}
+        <div className="p-4 rounded-xl mb-4" style={{ backgroundColor: '#ffdad615', border: '1px solid #ffdad640' }}>
+          <p className="text-sm font-body" style={{ color: 'var(--color-dashboard-text)' }}>
+            You are about to transfer ownership to <strong>{collaborator.name}</strong>. You will become a partner with full access. This action cannot be undone.
+          </p>
+        </div>
+        <div className="flex gap-3">
+          <Button type="button" onClick={onClose} variant="secondary" className="flex-1">
+            Cancel
+          </Button>
+          <Button type="button" onClick={handleTransfer} disabled={transferring} variant="danger" className="flex-1">
+            <ArrowRightLeft size={16} className="mr-2" />
+            {transferring ? 'Transferring...' : 'Confirm Transfer'}
+          </Button>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+function PermissionMatrix({ permissions, readOnly }: { permissions: TenantPermissions; readOnly?: boolean }) {
   const sections = Object.keys(SECTION_LABELS) as (keyof TenantPermissions)[];
 
   return (
@@ -305,7 +385,7 @@ function PermissionMatrix({ collaborators }: { collaborators: Collaborator[] }) 
           </h3>
         </div>
         <p className="font-body text-sm mt-1" style={{ color: 'var(--color-dashboard-text-secondary)' }}>
-          Default section access by role
+          {readOnly ? 'Current permission levels' : 'Section access by role'}
         </p>
       </div>
       <div className="overflow-x-auto">
@@ -315,38 +395,28 @@ function PermissionMatrix({ collaborators }: { collaborators: Collaborator[] }) 
               <th className="px-6 py-3 text-left font-label text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--color-dashboard-text-secondary)' }}>
                 Section
               </th>
-              {roles.map((r) => (
-                <th key={r} className="px-4 py-3 text-center font-label text-xs font-semibold uppercase tracking-wider" style={{ color: ROLE_CONFIG[r].color }}>
-                  {ROLE_CONFIG[r].label}
-                </th>
-              ))}
+              <th className="px-4 py-3 text-center font-label text-xs font-semibold uppercase tracking-wider" style={{ color: '#d4af37' }}>
+                Level
+              </th>
             </tr>
           </thead>
           <tbody>
             {sections.map((section, i) => (
               <tr
                 key={section}
-                style={{
-                  borderBottom: i < sections.length - 1 ? '1px solid var(--color-dashboard-border)' : undefined,
-                }}
+                style={{ borderBottom: i < sections.length - 1 ? '1px solid var(--color-dashboard-border)' : undefined }}
               >
                 <td className="px-6 py-2.5 font-body text-sm" style={{ color: 'var(--color-dashboard-text)' }}>
                   {SECTION_LABELS[section]}
                 </td>
-                {roles.map((r) => {
-                  const collab = collaborators.find((c) => c.role === r);
-                  const level = collab?.permissions[section] ?? 'none';
-                  return (
-                    <td key={r} className="px-4 py-2.5 text-center">
-                      <div className="flex items-center justify-center gap-1.5">
-                        <PermissionDot level={level} />
-                        <span className="font-body text-xs capitalize" style={{ color: PERMISSION_ICON_COLOR[level] }}>
-                          {level}
-                        </span>
-                      </div>
-                    </td>
-                  );
-                })}
+                <td className="px-4 py-2.5 text-center">
+                  <div className="flex items-center justify-center gap-1.5">
+                    <PermissionDot level={permissions[section]} />
+                    <span className="font-body text-xs capitalize" style={{ color: PERMISSION_COLORS[permissions[section]] }}>
+                      {permissions[section]}
+                    </span>
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -362,7 +432,7 @@ function PermissionMatrix({ collaborators }: { collaborators: Collaborator[] }) 
           <span className="font-body text-xs" style={{ color: 'var(--color-dashboard-text-secondary)' }}>Read</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: '#e5e7eb' }} />
+          <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: '#6b7280' }} />
           <span className="font-body text-xs" style={{ color: 'var(--color-dashboard-text-secondary)' }}>None</span>
         </div>
       </div>
@@ -371,21 +441,104 @@ function PermissionMatrix({ collaborators }: { collaborators: Collaborator[] }) 
 }
 
 export default function CollaboratorsPage() {
-  const [collaborators] = useState<Collaborator[]>(MOCK_COLLABORATORS);
+  const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
+  const [invitations, setInvitations] = useState<Invitation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [showInvite, setShowInvite] = useState(false);
-  const [showMatrix, setShowMatrix] = useState(false);
+  const [selectedCollab, setSelectedCollab] = useState<Collaborator | null>(null);
+  const [transferTarget, setTransferTarget] = useState<Collaborator | null>(null);
 
-  const handleRemove = (id: string) => {
-    if (confirm('Remove this collaborator?')) {
-      return;
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const [collabRes, inviteRes] = await Promise.all([
+        fetch('/api/collaborators', { credentials: 'include' }),
+        fetch('/api/collaborators/invitations', { credentials: 'include' }),
+      ]);
+      if (!collabRes.ok) throw new Error('Failed to load collaborators');
+      const collabData = await collabRes.json();
+      setCollaborators(Array.isArray(collabData) ? collabData : collabData.data ?? []);
+      if (inviteRes.ok) {
+        const inviteData = await inviteRes.json();
+        setInvitations(Array.isArray(inviteData) ? inviteData : inviteData.data ?? []);
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to load data');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const handleRemove = async (collab: Collaborator) => {
+    if (!confirm(`Remove ${collab.name} from your team?`)) return;
+    try {
+      const res = await fetch(`/api/collaborators/${collab.id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to remove collaborator');
+      setCollaborators((prev) => prev.filter((c) => c.id !== collab.id));
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Failed to remove collaborator');
     }
   };
+
+  const handleResendInvite = async (invitationId: string) => {
+    try {
+      const res = await fetch(`/api/collaborators/invitations/${invitationId}/resend`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to resend invitation');
+      setInvitations((prev) =>
+        prev.map((inv) => (inv.id === invitationId ? { ...inv, expiresAt: new Date(Date.now() + 7 * 86400000).toISOString() } : inv))
+      );
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Failed to resend invitation');
+    }
+  };
+
+  const handleRevokeInvite = async (invitationId: string) => {
+    if (!confirm('Revoke this invitation?')) return;
+    try {
+      const res = await fetch(`/api/collaborators/invitations/${invitationId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to revoke invitation');
+      setInvitations((prev) => prev.filter((inv) => inv.id !== invitationId));
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Failed to revoke invitation');
+    }
+  };
+
+  const countPermissions = (permissions: TenantPermissions) =>
+    Object.values(permissions).filter((p) => p !== 'none').length;
+
+  const pendingInvites = invitations.filter((inv) => inv.status === 'pending');
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="text-center">
+          <div className="w-10 h-10 rounded-full border-4 border-t-transparent animate-spin mx-auto mb-3" style={{ borderColor: '#d4af37', borderTopColor: 'transparent' }} />
+          <p className="text-sm font-label" style={{ color: 'var(--color-dashboard-text-secondary)' }}>Loading collaborators...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Collaborators"
-        description="Invite and manage your wedding team"
+        description="Manage your wedding team and permissions"
         actions={
           <Button onClick={() => setShowInvite(true)}>
             <UserPlus size={16} className="mr-2" />
@@ -394,80 +547,201 @@ export default function CollaboratorsPage() {
         }
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {collaborators.map((collab) => (
-          <Card key={collab.id} className="p-5 group">
-            <div className="flex items-start justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center font-heading font-bold text-sm"
-                  style={{
-                    backgroundColor: ROLE_CONFIG[collab.role].bg,
-                    color: ROLE_CONFIG[collab.role].color,
-                  }}
-                >
-                  {collab.name.split(' ').map((n) => n[0]).join('')}
-                </div>
-                <div className="min-w-0">
-                  <h3 className="font-heading font-bold truncate" style={{ color: 'var(--color-dashboard-text)' }}>
-                    {collab.name}
-                  </h3>
-                  <RoleBadge role={collab.role} />
-                </div>
-              </div>
-              <button
-                onClick={() => handleRemove(collab.id)}
-                className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-red-50"
-                style={{ color: '#e74c3c' }}
-              >
-                <Trash2 size={14} />
-              </button>
-            </div>
+      {error && (
+        <div className="flex items-center gap-2 p-4 rounded-xl text-sm font-body" style={{ backgroundColor: '#ffdad6', color: '#93000a' }}>
+          <AlertCircle size={16} />
+          {error}
+          <button onClick={fetchData} className="ml-auto font-semibold underline">Retry</button>
+        </div>
+      )}
 
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2 text-sm font-body" style={{ color: 'var(--color-dashboard-text-secondary)' }}>
-                <Mail size={14} className="shrink-0" />
-                <span className="truncate">{collab.email}</span>
-              </div>
-            </div>
+      {collaborators.length === 0 && !error && (
+        <Card className="p-12 text-center">
+          <Users size={40} className="mx-auto mb-4" style={{ color: '#d4af37' }} />
+          <h3 className="font-heading font-bold text-lg" style={{ color: 'var(--color-dashboard-text)' }}>
+            No collaborators yet
+          </h3>
+          <p className="font-body text-sm mt-1 mb-4" style={{ color: 'var(--color-dashboard-text-secondary)' }}>
+            Invite planners, family, and friends to help with your wedding
+          </p>
+          <Button onClick={() => setShowInvite(true)}>
+            <UserPlus size={16} className="mr-2" />
+            Invite Your First Collaborator
+          </Button>
+        </Card>
+      )}
 
-            <div className="mt-3 pt-3 flex flex-wrap gap-1.5" style={{ borderTop: '1px solid var(--color-dashboard-border)' }}>
-              {(Object.keys(collab.permissions) as (keyof TenantPermissions)[])
-                .filter((s) => collab.permissions[s] !== 'none')
-                .slice(0, 4)
-                .map((s) => (
-                  <span
-                    key={s}
-                    className="px-2 py-0.5 rounded text-xs font-label"
-                    style={{
-                      backgroundColor: 'var(--color-dashboard-border)',
-                      color: 'var(--color-dashboard-text-secondary)',
-                    }}
+      {collaborators.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {collaborators.map((collab) => {
+            const permCount = countPermissions(collab.permissions);
+            return (
+              <Card key={collab.id} className="p-5 group">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-10 h-10 rounded-full flex items-center justify-center font-heading font-bold text-sm"
+                      style={{
+                        backgroundColor: ROLE_CONFIG[collab.role]?.bg ?? '#6b728020',
+                        color: ROLE_CONFIG[collab.role]?.color ?? '#6b7280',
+                      }}
+                    >
+                      {collab.name.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="font-heading font-bold truncate" style={{ color: 'var(--color-dashboard-text)' }}>
+                        {collab.name}
+                      </h3>
+                      <RoleBadge role={collab.role} />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {collab.role === 'partner' && (
+                      <button
+                        onClick={() => setTransferTarget(collab)}
+                        className="p-1.5 rounded-lg transition-colors hover:bg-black/5"
+                        style={{ color: '#d4af37' }}
+                        title="Transfer ownership"
+                      >
+                        <ArrowRightLeft size={14} />
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleRemove(collab)}
+                      className="p-1.5 rounded-lg transition-colors hover:bg-red-50"
+                      style={{ color: '#e74c3c' }}
+                      title="Remove collaborator"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2 text-sm font-body" style={{ color: 'var(--color-dashboard-text-secondary)' }}>
+                    <Mail size={14} className="shrink-0" />
+                    <span className="truncate">{collab.email}</span>
+                  </div>
+                </div>
+
+                <div className="mt-3 pt-3 flex items-center justify-between" style={{ borderTop: '1px solid var(--color-dashboard-border)' }}>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(Object.keys(collab.permissions) as (keyof TenantPermissions)[])
+                      .filter((s) => collab.permissions[s] !== 'none')
+                      .slice(0, 3)
+                      .map((s) => (
+                        <span
+                          key={s}
+                          className="px-2 py-0.5 rounded text-xs font-label"
+                          style={{
+                            backgroundColor: 'var(--color-dashboard-border)',
+                            color: 'var(--color-dashboard-text-secondary)',
+                          }}
+                        >
+                          {SECTION_LABELS[s]}
+                        </span>
+                      ))}
+                    {permCount > 3 && (
+                      <span
+                        className="px-2 py-0.5 rounded text-xs font-label"
+                        style={{ backgroundColor: '#d4af3720', color: '#d4af37' }}
+                      >
+                        +{permCount - 3} more
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => setSelectedCollab(selectedCollab?.id === collab.id ? null : collab)}
+                    className="p-1.5 rounded-lg transition-colors hover:bg-black/5"
+                    style={{ color: '#d4af37' }}
+                    title="View permissions"
                   >
-                    {SECTION_LABELS[s]}
-                  </span>
-                ))}
-              {Object.values(collab.permissions).filter((p) => p !== 'none').length > 4 && (
-                <span
-                  className="px-2 py-0.5 rounded text-xs font-label"
-                  style={{ backgroundColor: '#d4af3720', color: '#d4af37' }}
-                >
-                  +{Object.values(collab.permissions).filter((p) => p !== 'none').length - 4} more
-                </span>
-              )}
-            </div>
-          </Card>
-        ))}
-      </div>
+                    <Shield size={14} />
+                  </button>
+                </div>
 
-      <Button variant="secondary" onClick={() => setShowMatrix(!showMatrix)} className="w-full">
-        <Shield size={16} className="mr-2" />
-        {showMatrix ? 'Hide' : 'Show'} Permission Matrix
-      </Button>
+                {selectedCollab?.id === collab.id && (
+                  <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--color-dashboard-border)' }}>
+                    <PermissionMatrix permissions={collab.permissions} readOnly />
+                  </div>
+                )}
+              </Card>
+            );
+          })}
+        </div>
+      )}
 
-      {showMatrix && <PermissionMatrix collaborators={collaborators} />}
+      {pendingInvites.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="font-heading font-bold text-lg flex items-center gap-2" style={{ color: 'var(--color-dashboard-text)' }}>
+            <Clock size={18} style={{ color: '#d4af37' }} />
+            Pending Invitations ({pendingInvites.length})
+          </h2>
+          <div className="space-y-2">
+            {pendingInvites.map((inv) => {
+              const isExpired = new Date(inv.expiresAt) < new Date();
+              return (
+                <Card key={inv.id} className="px-5 py-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+                        style={{ backgroundColor: '#d4af3718' }}
+                      >
+                        <Mail size={16} style={{ color: '#d4af37' }} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-body text-sm font-medium truncate" style={{ color: 'var(--color-dashboard-text)' }}>
+                          {inv.email}
+                        </p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <RoleBadge role={inv.role} />
+                          {isExpired ? (
+                            <span className="text-xs font-label" style={{ color: '#ba1a1a' }}>Expired</span>
+                          ) : (
+                            <span className="text-xs font-label" style={{ color: 'var(--color-dashboard-text-secondary)' }}>
+                              Expires {new Date(inv.expiresAt).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {!isExpired && (
+                        <button
+                          onClick={() => handleResendInvite(inv.id)}
+                          className="p-2 rounded-lg transition-colors hover:bg-black/5"
+                          style={{ color: '#d4af37' }}
+                          title="Resend invitation"
+                        >
+                          <RefreshCw size={14} />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleRevokeInvite(inv.id)}
+                        className="p-2 rounded-lg transition-colors hover:bg-red-50"
+                        style={{ color: '#e74c3c' }}
+                        title="Revoke invitation"
+                      >
+                        <XCircle size={14} />
+                      </button>
+                    </div>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
-      {showInvite && <InviteForm onClose={() => setShowInvite(false)} />}
+      {showInvite && <InviteModal onClose={() => setShowInvite(false)} onInvited={fetchData} />}
+      {transferTarget && (
+        <TransferOwnershipModal
+          collaborator={transferTarget}
+          onClose={() => setTransferTarget(null)}
+          onTransferred={fetchData}
+        />
+      )}
     </div>
   );
 }
