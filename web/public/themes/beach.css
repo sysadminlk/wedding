@@ -1,0 +1,15 @@
+:root {
+  --theme-bg: #f5f0e8;
+  --theme-bg-gradient: linear-gradient(180deg, #f5f0e8 0%, #e8f0f2 100%);
+  --theme-text: #334155;
+  --theme-text-muted: #64748b;
+  --theme-heading: #334155;
+  --theme-accent: #0369a1;
+  --theme-accent-hover: #025685;
+  --theme-card-bg: rgba(245, 240, 232, 0.85);
+  --theme-card-border: #d1c8b8;
+  --theme-card-shadow: 0 4px 16px rgba(51, 65, 85, 0.08);
+  --theme-hero-overlay: linear-gradient(180deg, rgba(51, 65, 85, 0.05) 0%, rgba(3, 105, 161, 0.35) 100%);
+  --theme-font-heading: "Inter", "Helvetica Neue", sans-serif;
+  --theme-font-body: "Inter", "Helvetica Neue", sans-serif;
+}

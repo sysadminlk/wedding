@@ -18,6 +18,7 @@ interface WeddingData {
   gifts?: { id: string; name: string; price: number; claimed: boolean }[];
   showGiftRegistry: boolean;
   showRsvp: boolean;
+  theme?: string;
 }
 
 function useCountdown(dateStr: string) {
@@ -41,6 +42,15 @@ function useCountdown(dateStr: string) {
   return diff;
 }
 
+const THEME_MAP: Record<string, string> = {
+  Classic: 'classic',
+  Modern: 'modern',
+  Rustic: 'rustic',
+  Beach: 'beach',
+  Garden: 'garden',
+  Royal: 'royal',
+};
+
 export default function PublicWeddingPage() {
   const params = useParams();
   const slug = params.slug as string;
@@ -57,6 +67,29 @@ export default function PublicWeddingPage() {
       .catch(() => setError('Wedding not found'))
       .finally(() => setLoading(false));
   }, [slug]);
+
+  useEffect(() => {
+    if (!wedding?.theme) return;
+    const fileName = THEME_MAP[wedding.theme] || THEME_MAP['Classic'];
+    const href = `/themes/${fileName}.css`;
+
+    const existing = document.querySelector<HTMLLinkElement>(`link[data-theme-css="${slug}"]`);
+    if (existing) {
+      if (existing.getAttribute('href') !== href) existing.setAttribute('href', href);
+      return;
+    }
+
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = href;
+    link.dataset.themeCss = slug;
+    document.head.appendChild(link);
+
+    return () => {
+      const el = document.querySelector<HTMLLinkElement>(`link[data-theme-css="${slug}"]`);
+      if (el) el.remove();
+    };
+  }, [wedding?.theme, slug]);
 
   if (loading) {
     return (

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Mail, Eye, Save, FileText, Send, Edit } from 'lucide-react';
+import { Mail, Eye, Save, FileText, Send, Edit, X, CheckCircle, AlertCircle } from 'lucide-react';
 import { EmailTemplate } from '@/types';
 import { PageHeader } from '@/components/dashboard/PageHeader';
 import { Button } from '@/components/ui/Button';
@@ -60,6 +60,138 @@ function PreviewPanel({ subject, body }: PreviewPanelProps) {
   );
 }
 
+interface TestEmailModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  templateType: string;
+}
+
+function TestEmailModal({ isOpen, onClose, templateType }: TestEmailModalProps) {
+  const [email, setEmail] = useState('');
+  const [sending, setSending] = useState(false);
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const handleSend = async () => {
+    if (!email.trim()) return;
+    setSending(true);
+    setToast(null);
+    try {
+      const res = await fetch('/api/email/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: email, templateType }),
+      });
+      if (res.ok) {
+        setToast({ type: 'success', message: 'Test email sent successfully!' });
+        setEmail('');
+        setTimeout(() => {
+          setToast(null);
+          onClose();
+        }, 1500);
+      } else {
+        const data = await res.json().catch(() => null);
+        setToast({ type: 'error', message: data?.message || 'Failed to send test email.' });
+      }
+    } catch {
+      setToast({ type: 'error', message: 'Network error. Please try again.' });
+    } finally {
+      setSending(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+      <div
+        className="rounded-2xl w-full max-w-md mx-4 overflow-hidden shadow-2xl"
+        style={{ backgroundColor: 'var(--color-dashboard-surface)', border: '1px solid var(--color-dashboard-border)' }}
+      >
+        <div
+          className="flex items-center justify-between px-6 py-4"
+          style={{ borderBottom: '1px solid var(--color-dashboard-border)' }}
+        >
+          <div className="flex items-center gap-3">
+            <Send className="w-5 h-5" style={{ color: '#d4af37' }} />
+            <h3 className="font-heading text-base font-semibold" style={{ color: 'var(--color-dashboard-text)' }}>
+              Send Test Email
+            </h3>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1 rounded-lg transition-colors"
+            style={{ color: 'var(--color-dashboard-text-secondary)' }}
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="px-6 py-5 space-y-4">
+          <p className="font-body text-sm" style={{ color: 'var(--color-dashboard-text-secondary)' }}>
+            Send a test of the <span style={{ color: '#d4af37' }}>{templateType.replace(/-/g, ' ')}</span> template to preview how it looks in an inbox.
+          </p>
+
+          <div className="space-y-2">
+            <label className="font-label text-xs uppercase tracking-wider" style={{ color: 'var(--color-dashboard-text-secondary)' }}>
+              Recipient Email
+            </label>
+            <Input
+              type="email"
+              value={email}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              className="w-full"
+            />
+          </div>
+
+          {toast && (
+            <div
+              className="flex items-center gap-2 rounded-lg px-4 py-3 text-sm font-body"
+              style={{
+                backgroundColor: toast.type === 'success' ? 'rgba(22,109,19,0.08)' : 'rgba(191,64,64,0.08)',
+                color: toast.type === 'success' ? '#166d13' : '#bf4040',
+                border: `1px solid ${toast.type === 'success' ? 'rgba(22,109,19,0.2)' : 'rgba(191,64,64,0.2)'}`,
+              }}
+            >
+              {toast.type === 'success' ? (
+                <CheckCircle className="w-4 h-4 shrink-0" />
+              ) : (
+                <AlertCircle className="w-4 h-4 shrink-0" />
+              )}
+              {toast.message}
+            </div>
+          )}
+        </div>
+
+        <div
+          className="flex items-center justify-end gap-3 px-6 py-4"
+          style={{ borderTop: '1px solid var(--color-dashboard-border)' }}
+        >
+          <button
+            onClick={onClose}
+            className="px-4 py-2 rounded-lg font-label text-sm transition-colors"
+            style={{
+              border: '1px solid var(--color-dashboard-border)',
+              color: 'var(--color-dashboard-text-secondary)',
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSend}
+            disabled={sending || !email.trim()}
+            className="flex items-center gap-2 px-5 py-2 rounded-lg font-label text-sm text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+            style={{ backgroundColor: '#d4af37' }}
+          >
+            <Send className="w-3.5 h-3.5" />
+            {sending ? 'Sending...' : 'Send Test'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function EmailTemplatesPage() {
   const [selectedType, setSelectedType] = useState<TemplateType>('save-the-date');
   const [template, setTemplate] = useState<EmailTemplate | null>(null);
@@ -68,6 +200,7 @@ export default function EmailTemplatesPage() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [testModalOpen, setTestModalOpen] = useState(false);
 
   const fetchTemplate = useCallback(async (type: TemplateType) => {
     setLoading(true);
@@ -176,14 +309,25 @@ export default function EmailTemplatesPage() {
                   {selectedInfo?.label}
                 </h2>
               </div>
-              <Button
-                onClick={handleSave}
-                disabled={saving || !dirty}
-                className="flex items-center gap-2"
-              >
-                <Save size={16} />
-                {saving ? 'Saving...' : 'Save Template'}
-              </Button>
+              <div className="flex items-center gap-3">
+                <Button
+                  onClick={() => setTestModalOpen(true)}
+                  disabled={saving}
+                  className="flex items-center gap-2"
+                  style={{ backgroundColor: 'transparent', border: '1px solid #d4af37', color: '#d4af37' }}
+                >
+                  <Send size={16} />
+                  Send Test Email
+                </Button>
+                <Button
+                  onClick={handleSave}
+                  disabled={saving || !dirty}
+                  className="flex items-center gap-2"
+                >
+                  <Save size={16} />
+                  {saving ? 'Saving...' : 'Save Template'}
+                </Button>
+              </div>
             </div>
 
             {loading ? (
@@ -231,6 +375,12 @@ export default function EmailTemplatesPage() {
           <PreviewPanel subject={subject} body={body} />
         </div>
       </div>
+
+      <TestEmailModal
+        isOpen={testModalOpen}
+        onClose={() => setTestModalOpen(false)}
+        templateType={selectedType}
+      />
     </div>
   );
 }

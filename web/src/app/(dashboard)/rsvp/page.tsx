@@ -228,181 +228,180 @@ export default function RsvpPage() {
 
             <div className="lg:col-span-2">
               <div className="sticky top-8 space-y-6">
-                <Card>
-                  <div className="p-6">
-                    <div className="flex items-center gap-3 mb-5">
-                      <Eye className="w-5 h-5" style={{ color: '#d4af37' }} />
-                      <h2 className="text-lg font-heading" style={{ color: 'var(--color-dashboard-text)' }}>
-                        Guest Preview
-                      </h2>
-                    </div>
+                <p className="font-label text-xs uppercase tracking-[0.2em]" style={{ color: 'var(--color-dashboard-text-secondary)' }}>
+                  Guest Preview
+                </p>
 
+                <div className="mx-auto" style={{ width: '375px', maxWidth: '100%' }}>
+                  <div
+                    className="rounded-[2rem] overflow-hidden shadow-2xl"
+                    style={{
+                      border: '1px solid var(--color-dashboard-border)',
+                      backgroundColor: '#faf9f7',
+                    }}
+                  >
                     <div
-                      className="rounded-xl overflow-hidden"
+                      className="relative px-5 py-6 text-center"
                       style={{
-                        border: '1px solid var(--color-dashboard-border)',
-                        backgroundColor: 'var(--color-auth-input-bg)',
+                        background: 'linear-gradient(135deg, #1c1b1b 0%, #2a2420 50%, #1c1b1b 100%)',
                       }}
                     >
-                      <div
-                        className="px-5 py-4 text-center"
-                        style={{ backgroundColor: '#d4af37' }}
-                      >
-                        <Users className="w-7 h-7 mx-auto text-white mb-2" />
-                        <h3 className="font-heading text-white text-base">
-                          Wedding RSVP
-                        </h3>
+                      <Users className="w-8 h-8 mx-auto mb-2" style={{ color: '#d4af37' }} />
+                      <h3 className="font-heading text-lg text-white font-semibold">
+                        Wedding RSVP
+                      </h3>
+                    </div>
+
+                    <div className="px-5 py-5 space-y-4">
+                      <div>
+                        <p className="font-heading text-base font-semibold text-center" style={{ color: '#1c1b1b' }}>
+                          {config.welcomeMessage || 'We can\'t wait to celebrate with you!'}
+                        </p>
+                        <div className="w-10 h-px mx-auto mt-3" style={{ backgroundColor: '#d4af37' }} />
                       </div>
 
-                      <div className="p-5 space-y-4">
-                        {config.welcomeMessage ? (
-                          <p
-                            className="font-body text-sm text-center italic"
-                            style={{ color: 'var(--color-dashboard-text-secondary)' }}
+                      <div className="space-y-3">
+                        <div className="space-y-1.5">
+                          <label className="font-label text-xs" style={{ color: '#6b6460' }}>
+                            Your Name
+                          </label>
+                          <div
+                            className="rounded-lg px-3 py-2 text-sm font-body"
+                            style={{
+                              border: '1px solid #e5e2e1',
+                              backgroundColor: '#ffffff',
+                              color: '#999',
+                            }}
                           >
-                            &ldquo;{config.welcomeMessage}&rdquo;
-                          </p>
-                        ) : (
-                          <p
-                            className="font-body text-sm text-center italic"
-                            style={{ color: 'var(--color-dashboard-text-secondary)', opacity: 0.5 }}
-                          >
-                            &ldquo;We can&apos;t wait to celebrate with you!&rdquo;
-                          </p>
+                            Enter your name
+                          </div>
+                        </div>
+
+                        {config.plusOneAllowed && (
+                          <div className="space-y-1.5">
+                            <label className="font-label text-xs" style={{ color: '#6b6460' }}>
+                              Number of Guests
+                            </label>
+                            <div
+                              className="rounded-lg px-3 py-2 text-sm font-body flex items-center justify-between"
+                              style={{
+                                border: '1px solid #e5e2e1',
+                                backgroundColor: '#ffffff',
+                                color: '#999',
+                              }}
+                            >
+                              <span>Select</span>
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </div>
+                          </div>
                         )}
 
-                        <div className="space-y-3">
-                          <div className="space-y-1">
-                            <label className="font-label text-xs" style={{ color: 'var(--color-dashboard-text-secondary)' }}>
-                              Your Name
+                        <div className="space-y-1.5">
+                          <label className="font-label text-xs" style={{ color: '#6b6460' }}>
+                            Attending?
+                          </label>
+                          <div className="flex gap-2">
+                            <span
+                              className="px-3 py-1.5 rounded-lg text-xs font-label text-white"
+                              style={{ backgroundColor: '#d4af37' }}
+                            >
+                              Attending
+                            </span>
+                            <span
+                              className="px-3 py-1.5 rounded-lg text-xs font-label"
+                              style={{
+                                border: '1px solid #e5e2e1',
+                                color: '#999',
+                                backgroundColor: '#ffffff',
+                              }}
+                            >
+                              Not Attending
+                            </span>
+                            <span
+                              className="px-3 py-1.5 rounded-lg text-xs font-label"
+                              style={{
+                                border: '1px solid #e5e2e1',
+                                color: '#999',
+                                backgroundColor: '#ffffff',
+                              }}
+                            >
+                              Maybe
+                            </span>
+                          </div>
+                        </div>
+
+                        {config.dietaryField && (
+                          <div className="space-y-1.5">
+                            <label className="font-label text-xs" style={{ color: '#6b6460' }}>
+                              Dietary Restrictions
                             </label>
                             <div
                               className="rounded-lg px-3 py-2 text-sm font-body"
                               style={{
-                                border: '1px solid var(--color-dashboard-border)',
-                                backgroundColor: 'var(--color-dashboard-surface)',
-                                color: 'var(--color-dashboard-text-secondary)',
-                                opacity: 0.6,
+                                border: '1px solid #e5e2e1',
+                                backgroundColor: '#ffffff',
+                                color: '#999',
+                                minHeight: '40px',
                               }}
                             >
-                              Enter your name
+                              Any allergies or preferences
                             </div>
                           </div>
+                        )}
 
-                          <div className="space-y-1">
-                            <label className="font-label text-xs" style={{ color: 'var(--color-dashboard-text-secondary)' }}>
-                              Attending?
+                        {config.accommodationField && (
+                          <div className="space-y-1.5">
+                            <label className="font-label text-xs" style={{ color: '#6b6460' }}>
+                              Accommodation Needs
                             </label>
-                            <div className="flex gap-2">
-                              <span
-                                className="px-3 py-1.5 rounded-lg text-xs font-label text-white"
-                                style={{ backgroundColor: '#d4af37' }}
-                              >
-                                Yes
-                              </span>
-                              <span
-                                className="px-3 py-1.5 rounded-lg text-xs font-label"
-                                style={{
-                                  border: '1px solid var(--color-dashboard-border)',
-                                  color: 'var(--color-dashboard-text-secondary)',
-                                }}
-                              >
-                                No
-                              </span>
+                            <div
+                              className="rounded-lg px-3 py-2 text-sm font-body"
+                              style={{
+                                border: '1px solid #e5e2e1',
+                                backgroundColor: '#ffffff',
+                                color: '#999',
+                                minHeight: '40px',
+                              }}
+                            >
+                              Do you need accommodation?
                             </div>
                           </div>
+                        )}
 
-                          {config.plusOneAllowed && (
-                            <div className="space-y-1">
-                              <label className="font-label text-xs" style={{ color: 'var(--color-dashboard-text-secondary)' }}>
-                                Plus One
-                              </label>
-                              <div
-                                className="rounded-lg px-3 py-2 text-sm font-body"
-                                style={{
-                                  border: '1px solid var(--color-dashboard-border)',
-                                  backgroundColor: 'var(--color-dashboard-surface)',
-                                  color: 'var(--color-dashboard-text-secondary)',
-                                  opacity: 0.6,
-                                }}
-                              >
-                                Guest name
-                              </div>
-                            </div>
-                          )}
-
-                          {config.dietaryField && (
-                            <div className="space-y-1">
-                              <label className="font-label text-xs" style={{ color: 'var(--color-dashboard-text-secondary)' }}>
-                                Dietary Requirements
-                              </label>
-                              <div
-                                className="rounded-lg px-3 py-2 text-sm font-body"
-                                style={{
-                                  border: '1px solid var(--color-dashboard-border)',
-                                  backgroundColor: 'var(--color-dashboard-surface)',
-                                  color: 'var(--color-dashboard-text-secondary)',
-                                  opacity: 0.6,
-                                }}
-                              >
-                                Any allergies or restrictions
-                              </div>
-                            </div>
-                          )}
-
-                          {config.accommodationField && (
-                            <div className="space-y-1">
-                              <label className="font-label text-xs" style={{ color: 'var(--color-dashboard-text-secondary)' }}>
-                                Accommodation
-                              </label>
-                              <div
-                                className="rounded-lg px-3 py-2 text-sm font-body"
-                                style={{
-                                  border: '1px solid var(--color-dashboard-border)',
-                                  backgroundColor: 'var(--color-dashboard-surface)',
-                                  color: 'var(--color-dashboard-text-secondary)',
-                                  opacity: 0.6,
-                                }}
-                              >
-                                Do you need accommodation?
-                              </div>
-                            </div>
-                          )}
-
-                          {toggleQuestions.length > 0 && (
-                            <div className="space-y-2">
-                              {toggleQuestions.map((question, i) => (
-                                <div key={i} className="space-y-1">
-                                  <label className="font-label text-xs" style={{ color: 'var(--color-dashboard-text-secondary)' }}>
-                                    {question}
-                                  </label>
-                                  <div
-                                    className="rounded-lg px-3 py-2 text-sm font-body"
-                                    style={{
-                                      border: '1px solid var(--color-dashboard-border)',
-                                      backgroundColor: 'var(--color-dashboard-surface)',
-                                      color: 'var(--color-dashboard-text-secondary)',
-                                      opacity: 0.6,
-                                    }}
-                                  >
-                                    Your answer
-                                  </div>
+                        {toggleQuestions.length > 0 && (
+                          <div className="space-y-3">
+                            {toggleQuestions.map((question, i) => (
+                              <div key={i} className="space-y-1.5">
+                                <label className="font-label text-xs" style={{ color: '#6b6460' }}>
+                                  {question}
+                                </label>
+                                <div
+                                  className="rounded-lg px-3 py-2 text-sm font-body"
+                                  style={{
+                                    border: '1px solid #e5e2e1',
+                                    backgroundColor: '#ffffff',
+                                    color: '#999',
+                                  }}
+                                >
+                                  Your answer
                                 </div>
-                              ))}
-                            </div>
-                          )}
-
-                          <div
-                            className="w-full rounded-lg py-2.5 text-center text-sm font-label text-white mt-2"
-                            style={{ backgroundColor: '#d4af37' }}
-                          >
-                            Submit RSVP
+                              </div>
+                            ))}
                           </div>
+                        )}
+
+                        <div
+                          className="w-full rounded-lg py-2.5 text-center text-sm font-label text-white mt-2 cursor-default"
+                          style={{ backgroundColor: '#d4af37' }}
+                        >
+                          Submit RSVP
                         </div>
                       </div>
                     </div>
                   </div>
-                </Card>
+                </div>
               </div>
             </div>
           </div>

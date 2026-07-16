@@ -1,0 +1,15 @@
+:root {
+  --theme-bg: #fffdf7;
+  --theme-bg-gradient: linear-gradient(180deg, #fffdf7 0%, #f5f0e8 100%);
+  --theme-text: #1a1a2e;
+  --theme-text-muted: #555566;
+  --theme-heading: #1a1a2e;
+  --theme-accent: #d4af37;
+  --theme-accent-hover: #b8960e;
+  --theme-card-bg: rgba(255, 253, 247, 0.85);
+  --theme-card-border: #e8e0cc;
+  --theme-card-shadow: 0 4px 24px rgba(26, 26, 46, 0.08);
+  --theme-hero-overlay: linear-gradient(180deg, rgba(26, 26, 46, 0.1) 0%, rgba(26, 26, 46, 0.5) 100%);
+  --theme-font-heading: "Playfair Display", "Georgia", serif;
+  --theme-font-body: "Georgia", serif;
+}
