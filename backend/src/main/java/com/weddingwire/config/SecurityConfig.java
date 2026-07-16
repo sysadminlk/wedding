@@ -35,13 +35,14 @@ public class SecurityConfig {
                     "/api/auth/**",
                     "/api/public/**",
                     "/api/payments/webhook/**",
+                    "/api/install/**",
+                    "/api/demo/**",
                     "/w/**",
                     "/share/**",
-                    "/install/**",
-                    "/admin/**",
                     "/swagger-ui/**",
                     "/v3/api-docs/**"
                 ).permitAll()
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
