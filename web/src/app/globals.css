@@ -2,110 +2,119 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700&display=swap');
 
 :root {
-  /* Brand Surface */
-  --color-bg-primary: #2C1810;
-  --color-bg-secondary: #3D2317;
-  --color-bg-tertiary: #4A2E1F;
-  --color-text-primary: #F5F0EB;
-  --color-text-secondary: #C4A882;
-  --color-text-muted: #8B7355;
-  --color-border: #4A2E1F;
-  --color-accent: #C4A882;
-  --color-accent-hover: #D4B892;
+  /* Brand Surface — Aethel */
+  --color-bg-primary: #fcf9f8;
+  --color-bg-secondary: #f0eded;
+  --color-bg-tertiary: #eae7e7;
+  --color-text-primary: #1c1b1b;
+  --color-text-secondary: #4d4635;
+  --color-text-muted: #7f7663;
+  --color-border: #d0c5af;
+  --color-accent: #d4af37;
+  --color-accent-hover: #e9c349;
 
   /* Auth & Guest Pages */
-  --color-auth-bg: #FDF8F3;
-  --color-auth-surface: #FFFFFF;
-  --color-auth-text: #2C1810;
-  --color-auth-text-secondary: #6B5B4E;
-  --color-auth-accent: #C4A882;
-  --color-auth-border: #E8DDD0;
-  --color-auth-input-bg: #F5F0EB;
-  --color-auth-input-border: #D4C5B3;
+  --color-auth-bg: #fcf9f8;
+  --color-auth-surface: #ffffff;
+  --color-auth-text: #1c1b1b;
+  --color-auth-text-secondary: #4d4635;
+  --color-auth-accent: #d4af37;
+  --color-auth-border: #d0c5af;
+  --color-auth-input-bg: #f6f3f2;
+  --color-auth-input-border: #d0c5af;
 
   /* Dashboard (Light Mode) */
-  --color-dashboard-bg: #FAFAFA;
-  --color-dashboard-surface: #FFFFFF;
-  --color-dashboard-text: #1A1A1A;
-  --color-dashboard-text-secondary: #6B7280;
-  --color-dashboard-border: #E5E5E5;
-  --color-dashboard-accent: #C4A882;
-  --color-dashboard-success: #10B981;
-  --color-dashboard-warning: #F59E0B;
-  --color-dashboard-error: #EF4444;
+  --color-dashboard-bg: #fcf9f8;
+  --color-dashboard-surface: #ffffff;
+  --color-dashboard-text: #1c1b1b;
+  --color-dashboard-text-secondary: #7f7663;
+  --color-dashboard-border: #e5e2e1;
+  --color-dashboard-accent: #d4af37;
+  --color-dashboard-success: #166d13;
+  --color-dashboard-warning: #cba72f;
+  --color-dashboard-error: #ba1a1a;
 
-  /* Typography */
+  /* Typography — Aethel */
   --font-heading: 'Playfair Display', Georgia, 'Times New Roman', serif;
-  --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  --font-body: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-label: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
-  /* Spacing */
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 16px;
-  --radius-xl: 24px;
+  /* Spacing — 8px base grid */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
   --radius-full: 9999px;
 
-  /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  /* Shadows — Aethel luxury */
+  --shadow-sm: 0 1px 3px rgba(26, 26, 26, 0.04);
+  --shadow-md: 0 4px 12px rgba(26, 26, 26, 0.06);
+  --shadow-lg: 0 10px 30px rgba(26, 26, 26, 0.08);
+  --shadow-xl: 0 20px 50px rgba(26, 26, 26, 0.1);
+  --shadow-glow: 0 0 20px rgba(212, 175, 55, 0.15);
 
-  /* Buttons */
-  --btn-primary-bg: #C4A882;
-  --btn-primary-text: #2C1810;
-  --btn-primary-hover: #D4B892;
+  /* Buttons — Aethel */
+  --btn-primary-bg: linear-gradient(135deg, #d4af37, #f1d38e);
+  --btn-primary-text: #ffffff;
+  --btn-primary-hover: linear-gradient(135deg, #e9c349, #f5dea0);
   --btn-secondary-bg: transparent;
-  --btn-secondary-text: #C4A882;
-  --btn-secondary-border: #C4A882;
-  --btn-danger-bg: #EF4444;
-  --btn-danger-text: #FFFFFF;
+  --btn-secondary-text: #166d13;
+  --btn-secondary-border: #166d13;
+  --btn-danger-bg: #ba1a1a;
+  --btn-danger-text: #ffffff;
 
-  /* Cards */
-  --card-bg: #FFFFFF;
-  --card-border: #E5E5E5;
+  /* Cards — Aethel */
+  --card-bg: #ffffff;
+  --card-border: #e5e2e1;
   --card-shadow: var(--shadow-md);
-  --card-radius: var(--radius-lg);
+  --card-radius: var(--radius-xl);
   --card-padding: 1.5rem;
 
-  /* Forms */
-  --input-bg: #FFFFFF;
-  --input-border: #D4C5B3;
-  --input-focus-border: #C4A882;
-  --input-focus-ring: rgba(196, 168, 130, 0.3);
-  --input-label: #2C1810;
-  --input-placeholder: #9CA3AF;
-  --input-error: #EF4444;
+  /* Forms — Aethel */
+  --input-bg: #f6f3f2;
+  --input-border: #d0c5af;
+  --input-focus-border: #d4af37;
+  --input-focus-ring: rgba(212, 175, 55, 0.3);
+  --input-label: #1c1b1b;
+  --input-placeholder: #7f7663;
+  --input-error: #ba1a1a;
 }
 
-/* Dark Mode */
+/* Dark Mode — Aethel */
 html.dark {
-  --color-bg-primary: #111111;
-  --color-bg-secondary: #1A1A1A;
+  --color-bg-primary: #1a1a1a;
+  --color-bg-secondary: #242424;
   --color-bg-tertiary: #333333;
-  --color-text-primary: #F5F5F5;
-  --color-text-secondary: #C4A882;
-  --color-text-muted: #9CA3AF;
+  --color-text-primary: #f5f5f5;
+  --color-text-secondary: #d4af37;
+  --color-text-muted: #9ca3af;
   --color-border: #333333;
-  --color-accent: #C4A882;
-  --color-accent-hover: #D4B892;
+  --color-accent: #e9c349;
+  --color-accent-hover: #f1d38e;
 
-  --color-dashboard-bg: #111111;
-  --color-dashboard-surface: #1A1A1A;
-  --color-dashboard-text: #F5F5F5;
-  --color-dashboard-text-secondary: #9CA3AF;
+  --color-dashboard-bg: #1a1a1a;
+  --color-dashboard-surface: #242424;
+  --color-dashboard-text: #f5f5f5;
+  --color-dashboard-text-secondary: #9ca3af;
   --color-dashboard-border: #333333;
+  --color-dashboard-accent: #e9c349;
 
-  --card-bg: #1A1A1A;
+  --card-bg: #242424;
   --card-border: #333333;
+  --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 
-  --input-bg: #1A1A1A;
+  --input-bg: #242424;
   --input-border: #333333;
-  --input-focus-border: #C4A882;
-  --input-label: #F5F5F5;
+  --input-focus-border: #e9c349;
+  --input-label: #f5f5f5;
+
+  --btn-primary-bg: linear-gradient(135deg, #e9c349, #f1d38e);
+  --btn-primary-text: #1a1a1a;
+  --btn-primary-hover: linear-gradient(135deg, #f1d38e, #ffe088);
 }
 
 body {
@@ -116,4 +125,25 @@ body {
 
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-heading);
+}
+
+/* Glassmorphism utility */
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+html.dark .glass {
+  background: rgba(36, 36, 36, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Gold gradient text */
+.gold-text {
+  background: linear-gradient(135deg, #d4af37, #f1d38e);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
