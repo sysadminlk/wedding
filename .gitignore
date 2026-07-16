@@ -58,3 +58,13 @@ miniodata/
 
 # PostgreSQL data
 pgdata/
+
+# Stitch design files
+web/stitch-screens/
+
+# TypeScript build info
+*.tsbuildinfo
+web/tsconfig.tsbuildinfo
+
+# Opencode config (contains API keys)
+opencode.json
