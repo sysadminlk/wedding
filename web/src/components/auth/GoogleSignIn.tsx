@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 
 declare global {
@@ -32,6 +32,20 @@ export default function GoogleSignIn({
 }: GoogleSignInProps) {
   const router = useRouter();
   const buttonRef = useRef<HTMLDivElement>(null);
+  const [clientId, setClientId] = useState('');
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    const envId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+    if (envId) {
+      setClientId(envId);
+      return;
+    }
+    fetch('/api/auth/google/client-id')
+      .then((r) => r.json())
+      .then((d) => { if (d.clientId) setClientId(d.clientId); })
+      .catch(() => {});
+  }, []);
 
   const handleCredentialResponse = useCallback(async (response: { credential: string }) => {
     try {
@@ -52,13 +66,7 @@ export default function GoogleSignIn({
   }, [router]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-    if (!clientId) {
-      console.warn('NEXT_PUBLIC_GOOGLE_CLIENT_ID not set');
-      return;
-    }
+    if (!clientId || typeof window === 'undefined') return;
 
     const loadGoogleScript = () => {
       if (document.getElementById('google-signin-script')) {
@@ -70,7 +78,7 @@ export default function GoogleSignIn({
       script.id = 'google-signin-script';
       script.async = true;
       script.defer = true;
-      script.onload = () => renderButton();
+      script.onload = () => { setLoaded(true); renderButton(); };
       document.head.appendChild(script);
     };
 
@@ -90,7 +98,11 @@ export default function GoogleSignIn({
     };
 
     loadGoogleScript();
-  }, [handleCredentialResponse, theme, size, text]);
+  }, [clientId, handleCredentialResponse, theme, size, text]);
+
+  if (!clientId) {
+    return <div className={`${className} text-center text-xs py-3`} style={{ color: 'var(--color-auth-text-secondary)' }}>Loading Google sign-in...</div>;
+  }
 
   return <div ref={buttonRef} className={className} />;
 }

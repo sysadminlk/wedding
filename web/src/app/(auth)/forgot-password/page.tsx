@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Button } from '@/components/ui/Button';
@@ -13,9 +14,16 @@ const schema = z.object({
 type ForgotForm = z.infer<typeof schema>;
 
 export default function ForgotPasswordPage() {
+  const router = useRouter();
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
+  const [sentEmail, setSentEmail] = useState('');
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<ForgotForm>();
+
+  useEffect(() => {
+    if (sentEmail) {
+      router.push(`/reset-password?email=${encodeURIComponent(sentEmail)}`);
+    }
+  }, [sentEmail, router]);
 
   const onSubmit = async (data: ForgotForm) => {
     setError('');
@@ -30,36 +38,11 @@ export default function ForgotPasswordPage() {
         setError(result.message || 'Request failed');
         return;
       }
-      setSuccess(true);
+      setSentEmail(data.email);
     } catch {
       setError('Network error. Please try again.');
     }
   };
-
-  if (success) {
-    return (
-      <div className="text-center">
-        <div
-          className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
-          style={{ backgroundColor: 'rgba(196, 168, 130, 0.1)' }}
-        >
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--color-auth-accent)" strokeWidth="2">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-            <polyline points="22 4 12 14.01 9 11.01" />
-          </svg>
-        </div>
-        <h1 className="text-2xl font-bold font-heading mb-2" style={{ color: 'var(--color-auth-text)' }}>
-          Check your email
-        </h1>
-        <p className="text-sm mb-6" style={{ color: 'var(--color-auth-text-secondary)' }}>
-          If an account exists with that email, you&apos;ll receive a password reset link shortly.
-        </p>
-        <a href="/login" className="inline-block">
-          <Button variant="secondary">Back to Login</Button>
-        </a>
-      </div>
-    );
-  }
 
   return (
     <div>
@@ -67,7 +50,7 @@ export default function ForgotPasswordPage() {
         Forgot your password?
       </h1>
       <p className="text-sm mb-6" style={{ color: 'var(--color-auth-text-secondary)' }}>
-        Enter your email and we&apos;ll send you a reset link
+        Enter your email and we&apos;ll send you a reset code
       </p>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -84,7 +67,7 @@ export default function ForgotPasswordPage() {
           {...register('email', { required: 'Email is required', pattern: { value: /^\S+@\S+$/i, message: 'Invalid email' } })}
         />
         <Button type="submit" loading={isSubmitting} className="w-full">
-          Send Reset Link
+          Send Reset Code
         </Button>
       </form>
 

@@ -67,6 +67,7 @@ public class SecurityConfig {
             "http://localhost:3000",
             "http://localhost:3001",
             "http://localhost:7071",
+            "http://50.21.181.175:7071",
             "https://" + appDomain,
             "https://app." + appDomain
         ));

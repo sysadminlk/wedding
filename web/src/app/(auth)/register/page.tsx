@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -19,9 +19,15 @@ type RegisterForm = z.infer<typeof registerSchema>;
 export default function RegisterPage() {
   const router = useRouter();
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState('');
   const { register, handleSubmit, formState: { errors, isSubmitting }, watch } = useForm<RegisterForm>();
   const email = watch('email');
+
+  useEffect(() => {
+    if (registeredEmail) {
+      router.push(`/verify-email?email=${encodeURIComponent(registeredEmail)}`);
+    }
+  }, [registeredEmail, router]);
 
   const onSubmit = async (data: RegisterForm) => {
     setError('');
@@ -36,36 +42,11 @@ export default function RegisterPage() {
         setError(result.message || 'Registration failed');
         return;
       }
-      setSuccess(true);
+      setRegisteredEmail(data.email);
     } catch {
       setError('Network error. Please try again.');
     }
   };
-
-  if (success) {
-    return (
-      <div className="text-center">
-        <div
-          className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
-          style={{ background: 'linear-gradient(135deg, #d4af37, #f1d38e)' }}
-        >
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-            <polyline points="22 4 12 14.01 9 11.01" />
-          </svg>
-        </div>
-        <h1 className="text-2xl font-heading font-bold mb-2" style={{ color: 'var(--color-auth-text)' }}>
-          Check your email
-        </h1>
-        <p className="text-sm mb-6 font-body" style={{ color: 'var(--color-auth-text-secondary)' }}>
-          We&apos;ve sent a verification code to <strong>{email}</strong>. Please check your inbox.
-        </p>
-        <a href="/login" className="inline-block">
-          <Button variant="secondary">Go to Login</Button>
-        </a>
-      </div>
-    );
-  }
 
   return (
     <div>

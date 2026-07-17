@@ -110,6 +110,33 @@ public class AuthService {
                 .build();
     }
 
+    public AuthResponse resendVerification(ForgotPasswordRequest request) {
+        User user = userRepository.findByEmail(request.getEmail()).orElse(null);
+
+        if (user == null) {
+            return AuthResponse.builder()
+                    .message("If the email exists, a new code has been sent.")
+                    .build();
+        }
+
+        if (user.getEmailVerified()) {
+            return AuthResponse.builder()
+                    .message("Email already verified.")
+                    .build();
+        }
+
+        String verificationCode = generate6DigitCode();
+        user.setVerificationCode(verificationCode);
+        user.setVerificationExpiresAt(LocalDateTime.now().plusMinutes(15));
+        userRepository.save(user);
+
+        emailService.sendVerificationEmail(user.getEmail(), user.getName(), verificationCode);
+
+        return AuthResponse.builder()
+                .message("If the email exists, a new code has been sent.")
+                .build();
+    }
+
     public AuthResponse forgotPassword(ForgotPasswordRequest request) {
         User user = userRepository.findByEmail(request.getEmail()).orElse(null);
 

@@ -62,7 +62,7 @@ function VerifyEmailForm() {
       const res = await fetch('/api/auth/verify-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: codeStr }),
+        body: JSON.stringify({ email, code: codeStr }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -80,7 +80,7 @@ function VerifyEmailForm() {
   const handleResend = async () => {
     setResendLoading(true);
     try {
-      await fetch('/api/auth/forgot-password', {
+      await fetch('/api/auth/resend-verification', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
