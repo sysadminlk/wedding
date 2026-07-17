@@ -9,6 +9,7 @@ import com.weddingwire.user.UserRepository;
 import com.weddingwire.user.UserTenant;
 import com.weddingwire.user.UserTenantRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +26,9 @@ public class CollaboratorService {
     private final TenantRepository tenantRepository;
     private final EmailService emailService;
     private final QrCodeService qrCodeService;
+
+    @Value("${app.domain:weddingwire.lk}")
+    private String appDomain;
 
     @Transactional
     public CollaboratorInvitation sendInvitation(UUID tenantId, String email, String role, String permissions) {
@@ -59,7 +63,7 @@ public class CollaboratorService {
 
         invitation = invitationRepository.save(invitation);
 
-        String inviteLink = "https://weddingwire.lk/invite/" + token;
+        String inviteLink = "https://" + appDomain + "/invite/" + token;
         emailService.sendCustomEmail(email,
                 "You've been invited to collaborate on " + tenant.getName(),
                 "<p>You've been invited to join <strong>" + tenant.getName() + "</strong> as a <strong>" + role + "</strong>.</p>"
@@ -132,7 +136,7 @@ public class CollaboratorService {
 
         invitation = invitationRepository.save(invitation);
 
-        String inviteLink = "https://weddingwire.lk/invite/" + newToken;
+        String inviteLink = "https://" + appDomain + "/invite/" + newToken;
         emailService.sendCustomEmail(invitation.getEmail(),
                 "You've been invited to collaborate on " + tenant.getName(),
                 "<p>You've been invited to join <strong>" + tenant.getName() + "</strong> as a <strong>" + invitation.getRole() + "</strong>.</p>"

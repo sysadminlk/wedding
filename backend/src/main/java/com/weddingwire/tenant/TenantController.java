@@ -42,6 +42,14 @@ public class TenantController {
         return ResponseEntity.ok(tenantService.getTenant(tenantId));
     }
 
+    @PutMapping("/{tenantId}/slug")
+    @RequiresPermission(section = "public-website", permission = "write")
+    public ResponseEntity<Tenant> updateSlug(
+            @PathVariable UUID tenantId,
+            @RequestBody SlugRequest request) {
+        return ResponseEntity.ok(tenantService.updateSlug(tenantId, request.getSlug()));
+    }
+
     private UUID getUserIdFromRequest(HttpServletRequest request) {
         String token = extractTokenFromCookie(request);
         if (token == null) {

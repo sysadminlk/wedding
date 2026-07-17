@@ -26,13 +26,13 @@ public class PayHereGateway implements PaymentGateway {
     private static final String STATUS_FAILED = "failed";
     private static final String STATUS_PENDING = "pending";
 
-    @Value("${payment.payhere.merchant-id:}")
+    @Value("${app.payhere.merchant-id:}")
     private String merchantId;
 
-    @Value("${payment.payhere.merchant-secret:}")
+    @Value("${app.payhere.secret:}")
     private String merchantSecret;
 
-    @Value("${payment.payhere.sandbox:true}")
+    @Value("${app.payhere.sandbox:true}")
     private boolean sandbox;
 
     private String checkoutUrl;

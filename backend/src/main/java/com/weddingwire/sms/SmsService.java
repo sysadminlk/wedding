@@ -13,6 +13,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -24,6 +25,10 @@ public class SmsService {
     @Value("${app.sms.enabled:false}")
     private boolean enabled;
 
+    @Value("${app.sms.provider:twilio}")
+    private String provider;
+
+    // Twilio
     @Value("${app.sms.twilio.account-sid:}")
     private String accountSid;
 
@@ -33,8 +38,31 @@ public class SmsService {
     @Value("${app.sms.twilio.from-number:}")
     private String fromNumber;
 
+    // notify.lk
+    @Value("${app.sms.notify-lk.user-id:}")
+    private String notifyLkUserId;
+
+    @Value("${app.sms.notify-lk.api-key:}")
+    private String notifyLkApiKey;
+
+    @Value("${app.sms.notify-lk.sender-id:}")
+    private String notifyLkSenderId;
+
     public void sendSms(String to, String message) {
-        if (!enabled || accountSid == null || accountSid.isBlank()
+        if (!enabled) {
+            log.info("SMS service disabled — skipping");
+            return;
+        }
+
+        if ("notify-lk".equalsIgnoreCase(provider)) {
+            sendViaNotifyLk(to, message);
+        } else {
+            sendViaTwilio(to, message);
+        }
+    }
+
+    private void sendViaTwilio(String to, String message) {
+        if (accountSid == null || accountSid.isBlank()
                 || authToken == null || authToken.isBlank()
                 || fromNumber == null || fromNumber.isBlank()) {
             log.info("SMS service inert — no Twilio keys configured");
@@ -57,11 +85,39 @@ public class SmsService {
 
             HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
             restTemplate.postForEntity(url, request, String.class);
-            log.info("SMS sent to {}", to);
+            log.info("SMS sent via Twilio to {}", to);
         } catch (NoClassDefFoundError e) {
             log.warn("Twilio dependency not found — SMS not sent to {}", to);
         } catch (Exception e) {
-            log.error("Failed to send SMS to {}: {}", to, e.getMessage());
+            log.error("Failed to send SMS via Twilio to {}: {}", to, e.getMessage());
+        }
+    }
+
+    private void sendViaNotifyLk(String to, String message) {
+        if (notifyLkUserId == null || notifyLkUserId.isBlank()
+                || notifyLkApiKey == null || notifyLkApiKey.isBlank()
+                || notifyLkSenderId == null || notifyLkSenderId.isBlank()) {
+            log.info("SMS service inert — no notify.lk keys configured");
+            return;
+        }
+
+        try {
+            String url = "https://www.notify.lk/api/v1/send";
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+            MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
+            body.add("user_id", notifyLkUserId);
+            body.add("sender_id", notifyLkSenderId);
+            body.add("to", to);
+            body.add("message", message);
+
+            HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
+            restTemplate.postForEntity(url, request, String.class);
+            log.info("SMS sent via notify.lk to {}", to);
+        } catch (Exception e) {
+            log.error("Failed to send SMS via notify.lk to {}: {}", to, e.getMessage());
         }
     }
 }

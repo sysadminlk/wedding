@@ -1,7 +1,17 @@
+# ===========================================================
+# weddingWire — application.yml (single source of truth)
+# ===========================================================
+# Dev profile: local defaults (no env vars needed)
+# Production profile: reads from .env / environment variables
+# ===========================================================
+
 spring:
   profiles:
     active: dev
 
+# ===========================================================
+# DEV PROFILE
+# ===========================================================
 ---
 spring:
   config:
@@ -47,6 +57,10 @@ jwt:
   refresh-expiration-ms: 604800000
 
 app:
+  domain: weddingwire.lk
+  frontend-url: http://localhost:7071
+  backend-url: http://localhost:7070
+
   jwt:
     secret: dev-secret-change-in-production-at-least-32-chars
     expiration: 86400000
@@ -73,20 +87,38 @@ app:
 
   sms:
     enabled: false
+    provider: twilio
     twilio:
       account-sid: ""
       auth-token: ""
       from-number: ""
+    notify-lk:
+      user-id: ""
+      api-key: ""
+      sender-id: ""
 
   payhere:
     merchant-id: sandbox
     secret: sandbox
     sandbox: true
 
+  notify-url-base: http://localhost:7070/api/payments/webhook
+
   demo:
     enabled: true
     reset-cron: "0 0 2 * * *"
 
+  google:
+    client-id: ""
+    client-secret: ""
+
+  apple:
+    client-id: ""
+    client-secret: ""
+
+# ===========================================================
+# PRODUCTION PROFILE
+# ===========================================================
 ---
 spring:
   config:
@@ -97,9 +129,9 @@ server:
   port: 7070
 
 spring.datasource:
-  url: ${SPRING_DATASOURCE_URL}
-  username: ${SPRING_DATASOURCE_USERNAME}
-  password: ${SPRING_DATASOURCE_PASSWORD}
+  url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://db:5432/weddingwire}
+  username: ${SPRING_DATASOURCE_USERNAME:postgres}
+  password: ${SPRING_DATASOURCE_PASSWORD:postgres}
   hikari:
     maximum-pool-size: 50
     minimum-idle: 10
@@ -110,7 +142,7 @@ spring.jpa:
   show-sql: false
 
 spring.mail:
-  host: ${SMTP_HOST:localhost}
+  host: ${SMTP_HOST:mail.datacenter.lk}
   port: ${SMTP_PORT:587}
   username: ${SMTP_USERNAME:}
   password: ${SMTP_PASSWORD:}
@@ -125,42 +157,67 @@ spring.flyway:
   enabled: true
   locations: classpath:db/migration
 
+jwt:
+  secret: ${JWT_SECRET}
+  access-expiration-ms: 3600000
+  refresh-expiration-ms: 604800000
+
 app:
+  domain: ${APP_DOMAIN:weddingwire.lk}
+  frontend-url: ${APP_FRONTEND_URL:https://app.weddingwire.lk}
+  backend-url: ${APP_BACKEND_URL:https://backend.weddingwire.lk}
+
   jwt:
     secret: ${JWT_SECRET}
     expiration: 86400000
 
   s3:
-    endpoint: ${AWS_S3_ENDPOINT:https://s3.amazonaws.com}
+    endpoint: ${AWS_S3_ENDPOINT:http://minio:9000}
     bucket: ${AWS_S3_BUCKET:weddingwire}
-    access-key: ${AWS_ACCESS_KEY_ID}
-    secret-key: ${AWS_SECRET_ACCESS_KEY}
-    path-style: false
+    access-key: ${AWS_ACCESS_KEY_ID:minioadmin}
+    secret-key: ${AWS_SECRET_ACCESS_KEY:minioadmin}
+    path-style: ${AWS_S3_PATH_STYLE:true}
 
   email:
-    provider: ${EMAIL_PROVIDER:resend}
+    provider: ${EMAIL_PROVIDER:smtp}
     resend:
-      api-key: ${RESEND_API_KEY}
+      api-key: ${RESEND_API_KEY:}
       from-name: weddingWire
-      from-email: ${EMAIL_FROM:noreply@weddingwire.com}
+      from-email: ${EMAIL_FROM:noreply@weddingwire.lk}
     smtp:
       host: ${SMTP_HOST}
       port: ${SMTP_PORT:587}
-      username: ${SMTP_USERNAME}
-      password: ${SMTP_PASSWORD}
-      from: ${EMAIL_FROM:noreply@weddingwire.com}
-
-  payhere:
-    merchant-id: ${PAYHERE_MERCHANT_ID}
-    secret: ${PAYHERE_SECRET}
-    sandbox: ${PAYHERE_SANDBOX:false}
+      username: ${SMTP_USERNAME:}
+      password: ${SMTP_PASSWORD:}
+      from: ${EMAIL_FROM:noreply@weddingwire.lk}
 
   sms:
     enabled: ${SMS_ENABLED:false}
+    provider: ${SMS_PROVIDER:twilio}
     twilio:
       account-sid: ${TWILIO_ACCOUNT_SID:}
       auth-token: ${TWILIO_AUTH_TOKEN:}
       from-number: ${TWILIO_FROM_NUMBER:}
+    notify-lk:
+      user-id: ${NOTIFY_LK_USER_ID:}
+      api-key: ${NOTIFY_LK_API_KEY:}
+      sender-id: ${NOTIFY_LK_SENDER_ID:CheerMe.lk}
+
+  payhere:
+    merchant-id: ${PAYHERE_MERCHANT_ID:}
+    secret: ${PAYHERE_SECRET:}
+    sandbox: ${PAYHERE_SANDBOX:false}
+
+  notify-url-base: ${PAYHERE_NOTIFY_URL:https://backend.weddingwire.lk/api/payments/webhook}
 
   demo:
-    enabled: false
+    enabled: ${DEMO_ENABLED:false}
+    reset-cron: ${DEMO_RESET_CRON:0 0 2 * * *}
+
+  google:
+    client-id: ${GOOGLE_CLIENT_ID:}
+    client-secret: ${GOOGLE_CLIENT_SECRET:}
+
+  apple:
+    client-id: ${APPLE_CLIENT_ID:}
+    client-secret: ${APPLE_CLIENT_SECRET:}

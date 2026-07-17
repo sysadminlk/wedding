@@ -247,4 +247,10 @@ public class PublicService {
         gift.setClaimedAt(LocalDateTime.now());
         return giftRepo.save(gift);
     }
+
+    public String getThemeBySlug(String slug) {
+        UUID tenantId = resolveTenantId(slug);
+        PublicWebsite website = websiteRepo.findByTenantId(tenantId).orElse(null);
+        return website != null ? website.getTheme() : "classic";
+    }
 }

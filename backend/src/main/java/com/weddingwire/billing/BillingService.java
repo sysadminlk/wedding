@@ -42,10 +42,10 @@ public class BillingService {
     @Qualifier("payHere")
     private final PaymentGateway paymentGateway;
 
-    @Value("${payment.notify-url-base:}")
+    @Value("${app.notify-url-base:}")
     private String notifyUrlBase;
 
-    @Value("${app.frontend-url:http://localhost:3000}")
+    @Value("${app.frontend-url:http://localhost:7071}")
     private String frontendUrl;
 
     @Transactional(readOnly = true)

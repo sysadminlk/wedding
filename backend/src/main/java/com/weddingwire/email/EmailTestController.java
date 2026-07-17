@@ -5,6 +5,7 @@ import com.weddingwire.common.TenantContext;
 import com.weddingwire.emailtemplate.EmailTemplate;
 import com.weddingwire.emailtemplate.EmailTemplateService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,6 +21,9 @@ public class EmailTestController {
     private final EmailTemplateService emailTemplateService;
     private final EmailTemplateRenderer templateRenderer;
 
+    @Value("${app.domain:weddingwire.lk}")
+    private String appDomain;
+
     @PostMapping("/test")
     @RequiresPermission(section = "email-templates", permission = "write")
     public ResponseEntity<Map<String, String>> sendTestEmail(@RequestBody EmailTestRequest request) {
@@ -32,7 +36,7 @@ public class EmailTestController {
                 "wedding_date", "2026-12-31",
                 "venue", "Grand Ballroom",
                 "guest_name", "Test Guest",
-                "rsvp_link", "https://weddingwire.lk/share/test-slug",
+                "rsvp_link", "https://" + appDomain + "/share/test-slug",
                 "unsubscribe_link", "#"
         );
 

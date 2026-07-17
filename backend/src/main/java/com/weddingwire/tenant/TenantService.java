@@ -6,6 +6,7 @@ import com.weddingwire.user.UserTenantRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +25,9 @@ public class TenantService {
 
     @PersistenceContext
     private EntityManager entityManager;
+
+    @Value("${app.domain:weddingwire.lk}")
+    private String appDomain;
 
     @Transactional
     public Tenant createTenant(UUID userId, TenantRequest request) {
@@ -47,7 +51,7 @@ public class TenantService {
 
         userTenantRepository.save(userTenant);
 
-        String qrUrl = "https://weddingwire.lk/share/" + tenant.getSlug();
+        String qrUrl = "https://" + appDomain + "/share/" + tenant.getSlug();
         qrCodeService.generateAndUploadQrCode(tenant.getId(), qrUrl);
 
         return tenant;
@@ -84,5 +88,30 @@ public class TenantService {
         }
 
         return slug;
+    }
+
+    @Transactional
+    public Tenant updateSlug(UUID tenantId, String newSlug) {
+        String slug = newSlug.toLowerCase()
+                .replaceAll("[^a-z0-9]+", "-")
+                .replaceAll("^-|-$", "");
+
+        if (tenantRepository.existsBySlug(slug)) {
+            Tenant existing = tenantRepository.findBySlug(slug).orElse(null);
+            if (existing != null && !existing.getId().equals(tenantId)) {
+                throw new RuntimeException("Slug already in use");
+            }
+        }
+
+        Tenant tenant = tenantRepository.findById(tenantId)
+                .orElseThrow(() -> new RuntimeException("Tenant not found"));
+
+        tenant.setSlug(slug);
+        tenantRepository.save(tenant);
+
+        String qrUrl = "https://" + appDomain + "/share/" + slug;
+        qrCodeService.generateAndUploadQrCode(tenantId, qrUrl);
+
+        return tenant;
     }
 }

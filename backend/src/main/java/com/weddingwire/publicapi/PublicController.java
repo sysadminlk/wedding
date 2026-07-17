@@ -95,4 +95,10 @@ public class PublicController {
             @PathVariable UUID giftId) {
         return ResponseEntity.ok(service.claimGift(slug, giftId));
     }
+
+    @GetMapping("/wedding/{slug}/theme")
+    public ResponseEntity<Map<String, String>> getTheme(@PathVariable String slug) {
+        String theme = service.getThemeBySlug(slug);
+        return ResponseEntity.ok(Map.of("theme", theme));
+    }
 }

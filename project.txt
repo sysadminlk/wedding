@@ -1,0 +1,959 @@
+================================================================================
+                    weddingWire - PROJECT HANDBOFF DOCUMENT
+================================================================================
+
+Generated: 2026-07-17
+Repository: https://github.com/sysadminlk/wedding.git
+Branch: dev
+Last commit: b04ece2 (fix: add spring.mail config to create JavaMailSender bean)
+
+================================================================================
+1. PROJECT OVERVIEW
+================================================================================
+
+weddingWire is a multi-tenant wedding planning SaaS with three client surfaces:
+  - Backend API  : Spring Boot 3 + Maven + PostgreSQL
+  - Web App      : Next.js 14 (App Router)
+  - Mobile App   : Flutter (single codebase, Android + iOS)
+
+Domain Model:
+  Tenant (wedding)
+  ├── Users (partners, planners, family, wedding party, vendors)
+  ├── Guests & RSVPs
+  ├── Seating (tables, floor plan, 3D editor)
+  ├── Budget (categories, planned vs actual)
+  ├── Checklist (phased tasks)
+  ├── Vendors (ratings, comparisons, booked tracking)
+  ├── Wedding Crew (roles, helpers, contacts)
+  ├── Timeline (day-of schedule)
+  ├── Inspiration (mood board)
+  ├── Wedding Menu (uploaded pages)
+  ├── Photos (guest gallery)
+  ├── Guest Memories (video/voice guestbook)
+  ├── Gift Registry + Cash Fund
+  ├── Public Website (6 themes)
+  ├── RSVP Page (customizable)
+  ├── Email Templates (save-the-date, invite)
+  ├── Landing Pages (10 designs, admin selectable)
+  ├── Languages (i18n, admin editable strings)
+  ├── Subscriptions (Free/Premium/Planner + PayHere billing)
+  ├── Collaborators (5 roles x 16 sections x read/write/none)
+  └── Demo Mode (read-only sandbox, daily reset)
+
+Key Decisions:
+  1. Multi-tenant: every data row scoped to tenant (wedding)
+  2. REST API: JSON over REST, no GraphQL
+  3. S3-compatible storage: MinIO locally, AWS S3 in production
+  4. Guest page: one QR -> one tabbed page (no app install)
+  5. Cash fund: guests pay couple directly (nothing through platform)
+  6. PDF/Excel export: every list view
+  7. 3D floor plan: web-only (React Three Fiber); mobile gets 2D
+  8. PayHere: primary payment gateway (Sri Lanka)
+  9. Design system: CSS variable-driven (Aethel theme)
+
+================================================================================
+2. TECH STACK
+================================================================================
+
+Backend:
+  - Java 17, Spring Boot 3.3.0, Maven
+  - PostgreSQL 16 (Flyway migrations)
+  - Spring Security (JWT, BCrypt)
+  - AWS SDK v2 (S3), POI (Excel), iText (PDF)
+  - ZXing (QR codes), Thymeleaf (email templates)
+  - springdoc-openapi (Swagger UI)
+
+Web:
+  - Next.js 14.2.5 (App Router, standalone output)
+  - React 18, TypeScript, Tailwind CSS
+  - React Hook Form + Zod (validation)
+  - Recharts (charts), React Three Fiber (3D floor plan)
+  - Lucide React (icons)
+
+Mobile:
+  - Flutter 3.x, Dart 3.x
+  - GoRouter, Dio, flutter_secure_storage
+  - video_player (S3-hosted memories playback)
+
+Infrastructure:
+  - Docker Compose (local dev)
+  - MinIO (S3-compatible object storage)
+  - PostgreSQL 16 Alpine
+
+================================================================================
+3. REPOSITORY STRUCTURE
+================================================================================
+
+wedding_planing/
+├── AGENTS.md                    # Agent context
+├── project.txt                  # This file
+├── docker-compose.yml           # Local dev orchestration
+├── .gitignore
+├── .gitattributes               # LF line endings enforced
+├── .editorconfig                # UTF-8 + LF
+├── plan/                        # Architecture docs
+│   ├── 00-overview.md
+│   ├── 01-backend.md
+│   ├── 02-web.md
+│   ├── 03-mobile.md
+│   ├── 04-infrastructure.md
+│   ├── 05-auth.md
+│   ├── 06-billing.md
+│   ├── 07-public-guest.md
+│   ├── 08-design-system.md
+│   ├── 09-integrations.md
+│   ├── 10-feature-sections.md
+│   └── sprint-plan.md
+├── backend/
+│   ├── pom.xml
+│   ├── Dockerfile               # maven:3.9-eclipse-temurin-17 builder
+│   └── src/main/
+│       ├── java/com/weddingwire/
+│       │   ├── WeddingWireApplication.java
+│       │   ├── config/
+│       │   │   ├── SecurityConfig.java      # JWT + CORS
+│       │   │   ├── WebConfig.java
+│       │   │   └── JacksonConfig.java
+│       │   ├── common/
+│       │   │   ├── BaseEntity.java           # UUID id, createdAt, updatedAt
+│       │   │   ├── JwtAuthenticationFilter.java
+│       │   │   ├── TenantContext.java        # ThreadLocal<UUID>
+│       │   │   ├── TenantInterceptor.java
+│       │   │   ├── RequiresPermission.java
+│       │   │   ├── PermissionDefaults.java
+│       │   │   ├── BusinessException.java
+│       │   │   └── ResourceNotFoundException.java
+│       │   ├── auth/
+│       │   │   ├── AuthController.java
+│       │   │   ├── AuthService.java
+│       │   │   └── AuthDTOs.java
+│       │   ├── tenant/
+│       │   │   ├── Tenant.java
+│       │   │   ├── TenantRepository.java
+│       │   │   ├── TenantService.java       # HARDCODED weddingwire.lk
+│       │   │   ├── TenantController.java
+│       │   │   └── TenantRequest.java
+│       │   ├── user/
+│       │   │   ├── User.java
+│       │   │   ├── UserRepository.java
+│       │   │   ├── UserTenant.java
+│       │   │   └── UserTenantRepository.java
+│       │   ├── guest/
+│       │   │   ├── Guest.java
+│       │   │   ├── GuestRepository.java
+│       │   │   ├── GuestService.java
+│       │   │   ├── GuestController.java
+│       │   │   └── GuestExportService.java
+│       │   ├── checklist/
+│       │   │   ├── ChecklistItem.java
+│       │   │   ├── ChecklistRepository.java
+│       │   │   ├── ChecklistService.java
+│       │   │   └── ChecklistController.java
+│       │   ├── budget/
+│       │   │   ├── BudgetItem.java
+│       │   │   ├── BudgetRepository.java
+│       │   │   ├── BudgetService.java
+│       │   │   └── BudgetController.java
+│       │   ├── seating/
+│       │   │   ├── TableConfig.java
+│       │   │   ├── TableConfigRepository.java
+│       │   │   ├── SeatingService.java
+│       │   │   └── SeatingController.java
+│       │   ├── vendor/
+│       │   │   ├── Vendor.java
+│       │   │   ├── VendorRepository.java
+│       │   │   ├── VendorService.java
+│       │   │   └── VendorController.java
+│       │   ├── crew/
+│       │   │   ├── CrewMember.java
+│       │   │   ├── CrewRepository.java
+│       │   │   ├── CrewService.java
+│       │   │   └── CrewController.java
+│       │   ├── timeline/
+│       │   │   ├── TimelineItem.java
+│       │   │   ├── TimelineRepository.java
+│       │   │   ├── TimelineService.java
+│       │   │   └── TimelineController.java
+│       │   ├── inspiration/
+│       │   │   ├── InspirationItem.java
+│       │   │   ├── InspirationRepository.java
+│       │   │   ├── InspirationService.java
+│       │   │   └── InspirationController.java
+│       │   ├── menu/
+│       │   │   ├── MenuPage.java
+│       │   │   ├── MenuRepository.java
+│       │   │   ├── MenuService.java
+│       │   │   └── MenuController.java
+│       │   ├── photo/
+│       │   │   ├── Photo.java
+│       │   │   ├── PhotoRepository.java
+│       │   │   ├── PhotoService.java
+│       │   │   └── PhotoController.java
+│       │   ├── memory/
+│       │   │   ├── GuestMemory.java
+│       │   │   ├── MemoryRepository.java
+│       │   │   ├── MemoryService.java
+│       │   │   └── MemoryController.java
+│       │   ├── gift/
+│       │   │   ├── GiftItem.java
+│       │   │   ├── CashFund.java
+│       │   │   ├── GiftRepository.java
+│       │   │   ├── GiftService.java
+│       │   │   └── GiftController.java
+│       │   ├── website/
+│       │   │   ├── PublicWebsite.java
+│       │   │   ├── WebsiteRepository.java
+│       │   │   ├── WebsiteService.java
+│       │   │   └── WebsiteController.java
+│       │   ├── rsvp/
+│       │   │   ├── RsvpPage.java
+│       │   │   ├── RsvpRepository.java
+│       │   │   ├── RsvpService.java
+│       │   │   └── RsvpController.java
+│       │   ├── email/
+│       │   │   ├── EmailService.java
+│       │   │   ├── EmailTestController.java # HARDCODED weddingwire.lk
+│       │   │   └── EmailTemplateRenderer.java
+│       │   ├── emailtemplate/
+│       │   │   ├── EmailTemplate.java
+│       │   │   ├── EmailTemplateRepository.java
+│       │   │   └── EmailTemplateService.java
+│       │   ├── collaborator/
+│       │   │   ├── CollaboratorInvitation.java
+│       │   │   ├── CollaboratorInvitationRepository.java
+│       │   │   ├── CollaboratorService.java # HARDCODED weddingwire.lk
+│       │   │   └── CollaboratorController.java
+│       │   ├── billing/
+│       │   │   ├── Subscription.java
+│       │   │   ├── SubscriptionRepository.java
+│       │   │   ├── PaymentInvoice.java
+│       │   │   ├── PaymentInvoiceRepository.java
+│       │   │   ├── BillingService.java      # reads app.frontend-url
+│       │   │   ├── BillingController.java
+│       │   │   ├── PaymentGateway.java      # interface
+│       │   │   ├── PaymentRequest.java
+│       │   │   ├── PaymentResult.java
+│       │   │   ├── PlanTier.java
+│       │   │   ├── PlanLimits.java
+│       │   │   ├── PayHereGateway.java      # reads payment.payhere.* (WRONG KEY)
+│       │   │   └── SubscribeRequest.java
+│       │   ├── sms/
+│       │   │   └── SmsService.java          # Twilio only - needs notify.lk
+│       │   ├── upload/
+│       │   │   ├── UploadController.java
+│       │   │   └── S3Service.java
+│       │   ├── publicsite/
+│       │   │   └── PublicSiteController.java
+│       │   ├── share/
+│       │   │   └── ShareController.java
+│       │   ├── dashboard/
+│       │   │   ├── DashboardService.java
+│       │   │   └── DashboardController.java
+│       │   ├── landing/
+│       │   │   └── LandingPageService.java
+│       │   ├── language/
+│       │   │   └── LanguageService.java
+│       │   ├── installer/
+│       │   │   ├── InstallerService.java
+│       │   │   └── InstallerController.java
+│       │   ├── demo/
+│       │   │   ├── DemoService.java
+│       │   │   └── DemoController.java
+│       │   ├── qr/
+│       │   │   └── QrCodeService.java
+│       │   └── export/
+│       │       ├── PdfExportService.java
+│       │       └── ExcelExportService.java
+│       └── resources/
+│           ├── application.yml               # Main config (dev + production)
+│           ├── db/migration/
+│           │   └── V1__init_schema.sql       # 35 tables + seed data
+│           └── templates/                     # Thymeleaf email templates
+├── web/
+│   ├── package.json
+│   ├── package-lock.json        # MUST be committed (npm ci in Dockerfile)
+│   ├── next.config.mjs
+│   ├── Dockerfile               # node:20-alpine, standalone output
+│   ├── tailwind.config.ts
+│   ├── postcss.config.js
+│   ├── tsconfig.json
+│   └── src/
+│       ├── app/
+│       │   ├── layout.tsx
+│       │   ├── page.tsx
+│       │   ├── login/page.tsx
+│       │   ├── register/page.tsx
+│       │   ├── verify-email/page.tsx
+│       │   ├── forgot-password/page.tsx
+│       │   ├── reset-password/page.tsx
+│       │   ├── dashboard/
+│       │   │   ├── page.tsx
+│       │   │   └── layout.tsx
+│       │   ├── guests/page.tsx
+│       │   ├── checklist/page.tsx
+│       │   ├── budget/page.tsx
+│       │   ├── seating/page.tsx
+│       │   ├── vendors/page.tsx
+│       │   ├── crew/page.tsx
+│       │   ├── timeline/page.tsx
+│       │   ├── inspiration/page.tsx
+│       │   ├── menu/page.tsx
+│       │   ├── photos/page.tsx
+│       │   ├── memories/page.tsx
+│       │   ├── gift-registry/page.tsx
+│       │   ├── website/page.tsx
+│       │   ├── rsvp/page.tsx
+│       │   ├── email-templates/page.tsx
+│       │   ├── collaborators/page.tsx
+│       │   ├── billing/page.tsx
+│       │   ├── floor-plan/page.tsx
+│       │   ├── install/
+│       │   │   └── page.tsx
+│       │   ├── admin/
+│       │   │   ├── page.tsx
+│       │   │   ├── landing/page.tsx
+│       │   │   └── languages/page.tsx
+│       │   ├── w/[slug]/page.tsx
+│       │   ├── share/[slug]/page.tsx
+│       │   └── api/                          # Server-side API routes
+│       │       ├── auth/
+│       │       │   ├── login/route.ts
+│       │       │   ├── register/route.ts
+│       │       │   ├── verify-email/route.ts
+│       │       │   ├── forgot-password/route.ts
+│       │       │   ├── reset-password/route.ts
+│       │       │   ├── me/route.ts
+│       │       │   └── logout/route.ts
+│       │       └── upload/route.ts
+│       ├── components/
+│       │   ├── ui/                            # Reusable UI components
+│       │   ├── layout/                        # Sidebar, Topbar
+│       │   ├── guests/                        # Guest list, forms
+│       │   ├── budget/                        # Charts, tables
+│       │   ├── seating/                       # Drag-and-drop
+│       │   ├── vendors/                       # Comparison table
+│       │   ├── photos/                        # Gallery, lightbox
+│       │   ├── inspiration/                   # Masonry grid
+│       │   ├── share/                         # Guest page tabs
+│       │   └── floor-plan/                    # React Three Fiber 3D
+│       ├── lib/
+│       │   ├── api.ts                         # Typed fetch wrapper
+│       │   ├── s3.ts                          # S3 upload helpers
+│       │   └── utils.ts
+│       ├── types/
+│       │   └── index.ts                       # All TypeScript interfaces
+│       └── styles/
+│           └── globals.css                    # CSS variables, Atelier tokens
+├── mobile/
+│   ├── pubspec.yaml
+│   ├── lib/
+│   │   ├── main.dart
+│   │   ├── app.dart
+│   │   ├── config/
+│   │   │   ├── api_config.dart
+│   │   │   └── theme.dart
+│   │   ├── models/
+│   │   ├── services/
+│   │   │   ├── api_service.dart
+│   │   │   ├── auth_service.dart
+│   │   │   └── storage_service.dart
+│   │   ├── screens/
+│   │   │   ├── auth/                          # Login, Register, Verify
+│   │   │   ├── dashboard/
+│   │   │   ├── guests/
+│   │   │   ├── checklist/
+│   │   │   ├── budget/
+│   │   │   ├── seating/                       # 2D view (no 3D)
+│       │   ├── vendors/
+│       │   ├── crew/
+│       │   ├── timeline/
+│       │   ├── inspiration/
+│       │   ├── menu/
+│       │   ├── photos/
+│       │   ├── memories/
+│       │   ├── gift-registry/
+│       │   ├── website/
+│       │   ├── rsvp/
+│       │   ├── email-templates/
+│       │   ├── collaborators/
+│       │   ├── billing/
+│       │   └── settings/
+│   ├── android/
+│   └── ios/
+└── .env.example               # (TO BE CREATED)
+
+================================================================================
+4. PRODUCTION CONFIGURATION
+================================================================================
+
+Server: Linux (root@mail)
+Domain: weddingwire.lk
+Git remote: https://github.com/sysadminlk/wedding.git (HTTPS, SSH fails on Windows)
+Dev machine: Windows (prabath.t) -> git push -> pull on Linux server
+
+Docker Port Mapping:
+  Backend    : 7070 -> 7070 (container internal)
+  Web        : 7071 -> 7071
+  PostgreSQL : 7072 -> 5432
+  MinIO API  : 7073 -> 9000
+  MinIO Admin: 7074 -> 9001
+
+Domain Routing:
+  app.weddingwire.lk    -> Nginx -> 127.0.0.1:7071 (web)
+  backend.weddingwire.lk -> Nginx -> 127.0.0.1:7070 (API)
+  minio.weddingwire.lk  -> Nginx -> 127.0.0.1:7074 (MinIO console)
+
+CREDENTIALS (all in .env file):
+  # SMTP
+  SMTP_HOST=mail.datacenter.lk
+  SMTP_PORT=587
+  SMTP_USERNAME=inbox@weddingwire.lk
+  SMTP_PASSWORD=your-smtp-password
+
+  # Google OAuth
+  GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
+  GOOGLE_CLIENT_SECRET=your-google-client-secret
+
+  # Apple OAuth (empty - TODO)
+  APPLE_CLIENT_ID=
+  APPLE_CLIENT_SECRET=
+
+  # PayHere (sandbox)
+  PAYHERE_MERCHANT_ID=your-payhere-merchant-id
+  PAYHERE_SECRET=your-payhere-secret
+  PAYHERE_SANDBOX=true
+
+  # notify.lk SMS
+  NOTIFY_LK_USER_ID=your-notify-lk-user-id
+  NOTIFY_LK_API_KEY=your-notify-lk-api-key
+  NOTIFY_LK_SENDER_ID=CheerMe.lk
+
+  # AWS S3 (via MinIO in Docker)
+  AWS_ACCESS_KEY_ID=your-aws-access-key-id
+  AWS_SECRET_ACCESS_KEY=your-aws-secret-access-key
+
+  # WhatsApp Business (empty - TODO)
+  WHATSAPP_API_URL=
+  WHATSAPP_API_TOKEN=
+  WHATSAPP_PHONE_NUMBER_ID=
+
+  # JWT
+  JWT_SECRET=<generate-32-char-random-string>
+
+  # Database
+  POSTGRES_DB=weddingwire
+  POSTGRES_USER=postgres
+  POSTGRES_PASSWORD=<set-strong-password>
+
+================================================================================
+5. DATABASE SCHEMA
+================================================================================
+
+Flyway V1 creates 35 tables:
+
+-- Tenancy & Auth
+tenants, users, user_tenants
+
+-- Wedding Data
+weddings, guests, table_configs, checklist_items, budget_items,
+vendors, crew_members, timeline_items
+
+-- Content (S3)
+inspiration_items, menu_pages, photos, guest_memories
+
+-- Gift Registry
+gift_items, cash_funds, cash_gift_donations
+
+-- Public Site
+public_websites, rsvp_pages, share_pages
+
+-- Config
+email_templates, landing_pages, languages, plan_configs
+
+-- Collaborators
+collaborators, collaborator_invitations
+
+-- Billing (entity classes diverge from SQL - use ddl-auto: update)
+subscriptions, payment_invoices, subscription
+
+-- Demo
+demo_configs
+
+-- Floor Plan
+floor_plans
+
+Entity classes add columns not in V1 SQL (handled by ddl-auto: update):
+- collaborator_invitations.updated_at
+- subscriptions.active, previous_plan, subscribed_at, payhere_order_id,
+  payhere_payment_id, amount_paid
+- payment_invoices.subscription_id, plan, gateway
+- language_config (full i18n system)
+- system_config (admin settings)
+- translations (string translations)
+- tenant.webhook_url, phone, whatsapp_enabled
+- guest.wheelchair_access_required
+- email_template.reminder_days_before
+
+Indexes:
+- Every table has idx_{table}_tenant
+- Guest search: idx_guests_name, idx_guests_rsvp, idx_guests_side, idx_guests_table
+- Public routes: idx_share_slug, idx_website_slug
+- Auth: idx_users_email, idx_user_tenants_user, idx_user_tenants_tenant
+
+Seed Data:
+- 3 plan configs (free/premium/planner)
+- 5 default email templates (verification, password_reset, save_the_date,
+  invitation, collaborator_invite)
+
+================================================================================
+6. API ENDPOINTS
+================================================================================
+
+Auth:
+  POST   /api/auth/register
+  POST   /api/auth/login
+  POST   /api/auth/verify-email
+  POST   /api/auth/resend-verification
+  POST   /api/auth/forgot-password
+  POST   /api/auth/reset-password
+  GET    /api/auth/me
+  POST   /api/auth/logout
+
+Tenants:
+  GET    /api/tenants
+  POST   /api/tenants
+  GET    /api/tenants/{id}
+  PUT    /api/tenants/{id}
+
+Guests:
+  GET    /api/guests?page=&size=&search=&side=&rsvp=
+  GET    /api/guests/{id}
+  POST   /api/guests
+  PUT    /api/guests/{id}
+  DELETE /api/guests/{id}
+  POST   /api/guests/import
+  GET    /api/guests/export?format=csv|xlsx|pdf
+
+Checklist:
+  GET    /api/checklist?page=&size=&phase=
+  GET    /api/checklist/{id}
+  POST   /api/checklist
+  PUT    /api/checklist/{id}
+  DELETE /api/checklist/{id}
+  PUT    /api/checklist/{id}/complete
+  PUT    /api/checklist/{id}/uncomplete
+
+Budget:
+  GET    /api/budget?page=&size=
+  GET    /api/budget/summary
+  GET    /api/budget/{id}
+  POST   /api/budget
+  PUT    /api/budget/{id}
+  DELETE /api/budget/{id}
+
+Seating:
+  GET    /api/tables
+  POST   /api/tables
+  PUT    /api/tables/{id}
+  DELETE /api/tables/{id}
+  POST   /api/tables/{id}/assign
+  POST   /api/tables/{id}/unassign
+  PUT    /api/tables/batch-update
+
+Vendors:
+  GET    /api/vendors?page=&size=&category=
+  GET    /api/vendors/{id}
+  POST   /api/vendors
+  PUT    /api/vendors/{id}
+  DELETE /api/vendors/{id}
+  POST   /api/vendors/compare
+
+Crew:
+  GET    /api/crew?page=&size=
+  GET    /api/crew/{id}
+  POST   /api/crew
+  PUT    /api/crew/{id}
+  DELETE /api/crew/{id}
+  GET    /api/crew/day-of-contacts
+
+Timeline:
+  GET    /api/timeline?page=&size=
+  GET    /api/timeline/{id}
+  POST   /api/timeline
+  PUT    /api/timeline/{id}
+  DELETE /api/timeline/{id}
+  PUT    /api/timeline/reorder
+
+Inspiration:
+  GET    /api/inspiration?page=&size=
+  GET    /api/inspiration/{id}
+  POST   /api/inspiration
+  PUT    /api/inspiration/{id}
+  DELETE /api/inspiration/{id}
+  PUT    /api/inspiration/reorder
+
+Menu:
+  GET    /api/menu?page=&size=
+  GET    /api/menu/{id}
+  POST   /api/menu
+  PUT    /api/menu/{id}
+  DELETE /api/menu/{id}
+  PUT    /api/menu/reorder
+
+Photos:
+  GET    /api/photos?page=&size=
+  DELETE /api/photos/{id}
+
+Memories:
+  GET    /api/memories?page=&size=&type=
+  DELETE /api/memories/{id}
+
+Gift Registry:
+  GET    /api/gifts
+  POST   /api/gifts
+  PUT    /api/gifts/{id}
+  DELETE /api/gifts/{id}
+  POST   /api/gifts/{id}/claim
+  GET    /api/funds
+  POST   /api/funds
+
+Website:
+  GET    /api/website
+  PUT    /api/website
+
+RSVP:
+  GET    /api/rsvp
+  PUT    /api/rsvp
+
+Email Templates:
+  GET    /api/email-templates/{type}
+  PUT    /api/email-templates/{type}
+  POST   /api/email/test
+
+Dashboard:
+  GET    /api/dashboard
+
+Billing:
+  GET    /api/billing/subscription
+  POST   /api/billing/subscribe
+  POST   /api/billing/cancel
+  PUT    /api/billing/plan
+  GET    /api/billing/invoices
+  GET    /api/billing/usage
+
+Collaborators:
+  GET    /api/collaborators
+  POST   /api/collaborators/invite
+  PUT    /api/collaborators/{userId}/permissions
+  DELETE /api/collaborators/{userId}
+  POST   /api/collaborators/transfer-ownership
+
+Upload:
+  POST   /api/upload/presigned
+  POST   /api/upload/confirm
+
+Admin:
+  GET    /api/admin/config
+  PUT    /api/admin/config
+  GET    /api/admin/languages
+  POST   /api/admin/languages
+
+Public:
+  GET    /w/{slug}                     # Public wedding site
+  GET    /share/{slug}                 # Guest page (tabbed)
+  GET    /api/public/share/{slug}      # Share page data
+  GET    /api/public/share/{slug}/seat/{name}  # Seat finder
+  POST   /api/public/share/{slug}/rsvp  # RSVP submission
+  POST   /api/public/share/{slug}/upload  # Guest file upload
+  GET    /api/public/share/{slug}/menu  # Menu pages
+  GET    /api/public/share/{slug}/gifts  # Gift registry
+  POST   /api/public/share/{slug}/gifts/{id}/claim
+
+Installer:
+  GET    /api/install/status
+  POST   /api/install
+
+Demo:
+  POST   /api/demo/reset
+  GET    /api/demo/config
+
+Swagger:
+  GET    /swagger-ui.html
+  GET    /v3/api-docs
+
+================================================================================
+7. SPRINT HISTORY (12 sprints, all completed)
+================================================================================
+
+Sprint 0  - Project Setup
+  Created: Docker Compose, backend scaffold (Spring Boot + Maven), web scaffold
+  (Next.js + Tailwind), mobile scaffold (Flutter), V1 SQL migration, MinIO setup,
+  Dockerfiles, monorepo structure, AGENTS.md, plan/ docs
+
+Sprint 1  - Auth & Multi-Tenancy
+  Created: User registration, email verification (6-digit code), JWT login,
+  password reset, tenant creation, TenantContext (ThreadLocal), TenantInterceptor,
+  @RequiresPermission annotation, PermissionDefaults, AuthController, TenantController
+
+Sprint 2  - Backend CRUD
+  Created: All 16 section CRUD endpoints with tenant scoping, pagination, sorting,
+  CSV/Excel import, PDF/Excel export, Swagger UI, Dashboard aggregated stats
+
+Sprint 3  - Web Shell & Auth Pages
+  Created: App shell (sidebar + topbar), Atelier design system (CSS tokens +
+  Tailwind), light/dark theme, login/register/verify-email/forgot-password pages,
+  dashboard page, typed API client (api.ts), auth middleware, permission middleware
+
+Sprint 4  - Core Web Features
+  Created: Guest list (table + search + filter + CRUD + import/export), Checklist
+  (phased + progress bars), Budget (categories + donut chart), Seating chart
+  (drag-and-drop), Vendors (comparison table), DataTable/Form/Export components
+
+Sprint 5  - Content Backend
+  Created: S3 presigned URLs, photo upload + thumbnails, memory upload, inspiration
+  upload, menu upload, QR code generation (ZXing), EmailService (Resend + SMTP),
+  SmsService (Twilio, inert), bulk email, file size limits
+
+Sprint 6  - Public Routes & Guest Page
+  Created: Public wedding site (/w/{slug}), guest page (/share/{slug}) with 5 tabs
+  (seat finder, gallery upload, menu carousel, gift registry, memory recorder),
+  public API endpoints, RSVP submission, SEO meta tags, 6 public site themes
+
+Sprint 7  - Web Content Features
+  Created: Photos (paginated gallery + lightbox), Memories (video/audio player),
+  Inspiration (masonry grid + reorder), Menu manager (drag-to-reorder), Timeline
+  editor (drag reorder), Crew roster, Gift registry UI, 3D floor plan (React Three
+  Fiber room editor)
+
+Sprint 8  - Themes & Customization
+  Created: 6 public site themes (Atelier, Rose, Garden, Minimal, Luxe, Coastal),
+  RSVP page customizer (theme + fonts + button shape + live preview), Email template
+  editor (subject + body + live preview + variables), Public site editor (story +
+  schedule), Slug customization + QR regeneration
+
+Sprint 9  - Collaborators & Permissions
+  Created: Invitation flow (email + role + permissions + 7-day expiry), accept
+  invitation (existing user -> join / new user -> register then join), collaborator
+  list (web), permission editor (per-section toggle), @RequiresPermission on all
+  write endpoints, middleware permission checks, remove collaborator, resend
+  invitation, transfer ownership
+
+Sprint 10 - Billing & Payments
+  Created: PlanTier enum (FREE/PREMIUM/PLANNER), PlanLimits record,
+  Subscription entity, PaymentInvoice entity, BillingService (subscribe, cancel,
+  changePlan, checkLimits, handleWebhook), PayHereGateway (HmacMD5 signature
+  verification, checkout URL generation), BillingController, Billing page (plan
+  display + usage bars + invoices + upgrade/downgrade)
+
+Sprint 11 - Flutter Mobile App
+  Created: App shell (Atelier theme + GoRouter), auth screens, dashboard, all 16
+  section screens with full feature parity (2D seating, not 3D), API integration,
+  Dio HTTP client with JWT interceptor, flutter_secure_storage
+
+Sprint 12 - Admin & Polish
+  Created: Admin panel (/admin), landing page selector (10 designs), web installer
+  (/install - 4-step wizard), demo mode (read-only + daily reset), i18n system
+  (language switcher + admin string editor), PDF/Excel export polish, email
+  verification UX, unit tests, bug fixes, performance optimization
+
+Additional commits (bug fixes):
+  - Fix Docker build + reassign ports to 7070-7080
+  - Fix Maven build: add missing dependency versions, remove Velocity
+  - Fix BOM in DonateRequest and InstallerService
+  - Fix missing imports
+  - Fix PdfExportService unreachable IOException catch
+  - Fix ExcelExportService IndexedColors.DARK_BROWN -> DARK_BLUE
+  - Fix: change hibernate ddl-auto to update (ee134d8)
+  - Fix: add spring.mail config (b04ece2)
+
+================================================================================
+8. KNOWN ISSUES & WHAT NEEDS FIXING
+================================================================================
+
+CRITICAL ISSUES (prevent production from working):
+
+1. CLOUDFLARE REDIRECT LOOP
+   Symptom: app.weddingwire.lk infinite 301 redirect
+   Cause: Cloudflare SSL "Flexible" + Nginx HTTP->HTTPS redirect = loop
+   Fix: Set Cloudflare SSL/TLS to "Full" (not "Full Strict" since cert is for
+   cheerme.lk, not weddingwire.lk)
+
+2. NGINX MISSING /api/ ROUTING
+   Symptom: Browser cannot reach backend API
+   Cause: Nginx only proxies to web (7071), no /api/ location block
+   Fix: Add to app.weddingwire.lk server block:
+     location /api/ {
+         proxy_pass http://127.0.0.1:7070;
+         proxy_set_header Host $host;
+         proxy_set_header X-Real-IP $remote_addr;
+         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+         proxy_set_header X-Forwarded-Proto $scheme;
+     }
+
+3. HARDCODED DOMAINS IN JAVA
+   Files: CollaboratorService.java (lines 62, 135), TenantService.java (lines 50,
+   108), EmailTestController.java (line 35), SecurityConfig.java (line 64)
+   Current: "https://weddingwire.lk"
+   Fix: Read from app.domain config property, default to weddingwire.lk
+
+4. PAYHERE PROPERTY KEY MISMATCH
+   File: PayHereGateway.java (lines 29, 32, 35)
+   Current: reads "payment.payhere.merchant-id", "payment.payhere.merchant-secret",
+   "payment.payhere.sandbox"
+   application.yml has: "app.payhere.merchant-id", "app.payhere.secret",
+   "app.payhere.sandbox"
+   Fix: Either change Java to read "app.payhere.*" or change yml to
+   "payment.payhere.*"
+
+5. CORS ORIGINS HARDCODED
+   File: SecurityConfig.java (line 61-65)
+   Current: only allows localhost:3000, localhost:3001, weddingwire.lk
+   Fix: Read from config, include app.weddingwire.lk
+
+MODERATE ISSUES (broken features):
+
+6. BACKEND_URL NOT SET IN WEB
+   Files: All 7 auth proxy routes (login, register, verify-email, etc.)
+   Current: defaults to http://localhost:8080 (doesn't exist in Docker)
+   Fix: Set BACKEND_URL env var to http://backend:7070 or http://localhost:7070
+
+7. NEXT_PUBLIC_API_URL WRONG FOR BROWSER
+   File: docker-compose.yml (line 27), api.ts (line 3), next.config.mjs (line 13)
+   Current: http://localhost:7070 (server-side only, wrong for browser)
+   Fix: Set to empty string "" for browser to use relative URLs via Nginx proxy
+
+8. SMS SERVICE - TWILIO ONLY
+   File: SmsService.java
+   Current: Only supports Twilio API
+   Fix: Add notify.lk provider support (https://www.notify.lk/api/v1/send)
+
+9. NO OAUTH2 DEPENDENCY
+   File: pom.xml
+   Current: No spring-boot-starter-oauth2-client
+   Fix: Add dependency for Google/Apple OAuth
+
+MINOR ISSUES (cosmetic/tech debt):
+
+10. BillingService reads app.frontend-url (line 48) and payment.notify-url-base
+    (line 45) - these need to be set in application.yml
+
+11. BillingService reads app.frontend-url defaulting to localhost:3000, but actual
+    frontend is at app.weddingwire.lk
+
+12. No .env file exists yet - all secrets need to be externalized
+
+================================================================================
+9. DEPLOYMENT INSTRUCTIONS
+================================================================================
+
+Local Development:
+  1. Install Docker Desktop
+  2. git clone https://github.com/sysadminlk/wedding.git
+  3. cd wedding_planing
+  4. Copy .env.example to .env, fill in values
+  5. docker compose up -d
+  6. Backend: http://localhost:7070
+  7. Web: http://localhost:7071
+  8. DB: localhost:7072
+  9. MinIO: http://localhost:7073 (console: :7074)
+
+Production Deploy:
+  1. SSH into server (root@mail)
+  2. cd /path/to/wedding_planing
+  3. git pull origin dev
+  4. Ensure .env file exists with all production credentials
+  5. docker compose down -v
+  6. docker compose up --build -d
+  7. Verify backend at http://localhost:7070/actuator/health
+  8. Verify web at http://localhost:7071
+
+Nginx Config (on server):
+  - Update /etc/nginx/sites-available/app.weddingwire.lk:
+    server {
+        listen 443 ssl http2;
+        server_name app.weddingwire.lk;
+        ssl_certificate /etc/ssl/certs/cheerme.lk.pem;
+        ssl_certificate_key /etc/ssl/private/cheerme.lk.key;
+
+        location / {
+            proxy_pass http://127.0.0.1:7071;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        location /api/ {
+            proxy_pass http://127.0.0.1:7070;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+    }
+
+  - Also add server block for backend.weddingwire.lk -> 127.0.0.1:7070
+  - Also add server block for minio.weddingwire.lk -> 127.0.0.1:7074
+
+  - nginx -t && systemctl reload nginx
+
+Cloudflare:
+  - DNS A records for *.weddingwire.lk pointing to server IP
+  - SSL/TLS mode: FULL (not Flexible, not Full Strict)
+  - SSL certificate covers cheerme.lk (not weddingwire.lk) so Full Strict won't work
+
+Build Commands:
+  Backend:  cd backend && mvn clean package -DskipTests
+  Web:      cd web && npm run build
+  Mobile:   cd mobile && flutter build apk
+
+================================================================================
+10. DESIGN SYSTEM - AETHEL
+================================================================================
+
+Fonts:
+  - Headings: Playfair Display
+  - Body: Montserrat (system fallback: system-ui, sans-serif)
+
+Color Palette:
+  Primary:   Champagne Gold (#C4A882)
+  Accent:    Blush (#D4A574)
+  Surface:   Warm Ivory (#FAF7F2)
+  Espresso:  Dark (#2C1810)
+  Gold:      #d4af37
+
+CSS Variables (in globals.css):
+  --color-primary, --color-accent, --color-surface, --color-bg,
+  --color-text, --color-muted, --color-border, --font-heading, --font-body
+
+Public Site Themes:
+  1. Atelier   - Default warm ivory + gold
+  2. Rose      - Pink tones
+  3. Garden    - Green botanical
+  4. Minimal   - Clean white + black
+  5. Luxe      - Dark + gold
+  6. Coastal   - Blue + sandy
+
+Landing Page Designs (10):
+  Atelier, Ivory, Cinema, Split, Editorial, Minimal, Gilded, Folio, Portrait, Deco
+
+================================================================================
+11. WHAT THIS FILE + COMMIT ADDS
+================================================================================
+
+This deployment consolidation:
+  1. Creates .env file with all production credentials
+  2. Creates .env.example as template (committed to git)
+  3. Rewrites application.yml as single source of truth (dev + production)
+  4. Simplifies docker-compose.yml to use env_file
+  5. Fixes CORS in SecurityConfig to read from config
+  6. Fixes hardcoded domains in CollaboratorService, TenantService,
+     EmailTestController to use app.domain config
+  7. Fixes PayHereGateway property keys to match application.yml
+  8. Adds notify.lk SMS provider to SmsService
+  9. Adds OAuth2 dependency to pom.xml
+  10. Fixes web frontend API_BASE and NEXT_PUBLIC_API_URL
+
+================================================================================
+END OF PROJECT HANDOFF
+================================================================================
