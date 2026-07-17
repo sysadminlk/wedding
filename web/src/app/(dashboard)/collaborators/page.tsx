@@ -12,11 +12,9 @@ import {
   Send,
   RefreshCw,
   AlertCircle,
-  Check,
   ChevronDown,
   Clock,
   ArrowRightLeft,
-  CheckCircle2,
   XCircle,
 } from 'lucide-react';
 import { PageHeader } from '@/components/dashboard/PageHeader';

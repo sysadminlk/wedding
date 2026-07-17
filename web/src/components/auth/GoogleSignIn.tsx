@@ -33,7 +33,6 @@ export default function GoogleSignIn({
   const router = useRouter();
   const buttonRef = useRef<HTMLDivElement>(null);
   const [clientId, setClientId] = useState('');
-  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     const envId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
@@ -78,7 +77,7 @@ export default function GoogleSignIn({
       script.id = 'google-signin-script';
       script.async = true;
       script.defer = true;
-      script.onload = () => { setLoaded(true); renderButton(); };
+      script.onload = () => renderButton();
       document.head.appendChild(script);
     };
 

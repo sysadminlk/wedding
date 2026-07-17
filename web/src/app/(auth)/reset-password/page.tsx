@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Button } from '@/components/ui/Button';
@@ -18,7 +18,6 @@ const passwordSchema = z.object({
 type PasswordForm = z.infer<typeof passwordSchema>;
 
 function ResetPasswordForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get('email') || '';
 
@@ -31,6 +30,89 @@ function ResetPasswordForm() {
   const [resendLoading, setResendLoading] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<PasswordForm>();
+
+  const codeStr = code.join('');
+
+  const handleCodeChange = useCallback((index: number, value: string) => {
+    if (value.length > 1) value = value.slice(-1);
+    if (!/^\d*$/.test(value)) return;
+    const newCode = [...code];
+    newCode[index] = value;
+    setCode(newCode);
+    if (value && index < 5) {
+      inputRefs.current[index + 1]?.focus();
+    }
+  }, [code]);
+
+  const handleKeyDown = useCallback((index: number, e: React.KeyboardEvent) => {
+    if (e.key === 'Backspace' && !code[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  }, [code]);
+
+  const handlePaste = useCallback((e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    const newCode = pasted.split('').concat(Array(6).fill('')).slice(0, 6);
+    setCode(newCode);
+    if (pasted.length > 0) {
+      inputRefs.current[Math.min(pasted.length, 5)]?.focus();
+    }
+  }, []);
+
+  const handleVerifyCode = useCallback(() => {
+    setError('');
+    if (codeStr.length !== 6) {
+      setError('Please enter the complete 6-digit code');
+      return;
+    }
+    setCodeVerified(true);
+  }, [codeStr]);
+
+  const handleResend = useCallback(async () => {
+    setResendLoading(true);
+    try {
+      await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      setResendTimer(60);
+    } catch {
+      // Silent fail
+    } finally {
+      setResendLoading(false);
+    }
+  }, [email]);
+
+  useEffect(() => {
+    if (resendTimer > 0 && !codeVerified) {
+      const timer = setTimeout(() => setResendTimer(resendTimer - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendTimer, codeVerified]);
+
+  const onSubmitPassword = useCallback(async (data: PasswordForm) => {
+    setError('');
+    setLoading(true);
+    try {
+      const res = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, code: codeStr, newPassword: data.password }),
+      });
+      const result = await res.json();
+      if (!res.ok) {
+        setError(result.message || 'Reset failed');
+        return;
+      }
+      setSuccess(true);
+    } catch {
+      setError('Network error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, [email, codeStr]);
 
   if (!email) {
     return (
@@ -72,89 +154,6 @@ function ResetPasswordForm() {
       </div>
     );
   }
-
-  const handleCodeChange = useCallback((index: number, value: string) => {
-    if (value.length > 1) value = value.slice(-1);
-    if (!/^\d*$/.test(value)) return;
-    const newCode = [...code];
-    newCode[index] = value;
-    setCode(newCode);
-    if (value && index < 5) {
-      inputRefs.current[index + 1]?.focus();
-    }
-  }, [code]);
-
-  const handleKeyDown = useCallback((index: number, e: React.KeyboardEvent) => {
-    if (e.key === 'Backspace' && !code[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
-    }
-  }, [code]);
-
-  const handlePaste = useCallback((e: React.ClipboardEvent) => {
-    e.preventDefault();
-    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
-    const newCode = pasted.split('').concat(Array(6).fill('')).slice(0, 6);
-    setCode(newCode);
-    if (pasted.length > 0) {
-      inputRefs.current[Math.min(pasted.length, 5)]?.focus();
-    }
-  }, []);
-
-  const codeStr = code.join('');
-
-  const handleVerifyCode = async () => {
-    setError('');
-    if (codeStr.length !== 6) {
-      setError('Please enter the complete 6-digit code');
-      return;
-    }
-    setCodeVerified(true);
-  };
-
-  const onSubmitPassword = async (data: PasswordForm) => {
-    setError('');
-    setLoading(true);
-    try {
-      const res = await fetch('/api/auth/reset-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, code: codeStr, newPassword: data.password }),
-      });
-      const result = await res.json();
-      if (!res.ok) {
-        setError(result.message || 'Reset failed');
-        return;
-      }
-      setSuccess(true);
-    } catch {
-      setError('Network error. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleResend = async () => {
-    setResendLoading(true);
-    try {
-      await fetch('/api/auth/forgot-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
-      setResendTimer(60);
-    } catch {
-      // Silent fail
-    } finally {
-      setResendLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (resendTimer > 0 && !codeVerified) {
-      const timer = setTimeout(() => setResendTimer(resendTimer - 1), 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [resendTimer, codeVerified]);
 
   if (!codeVerified) {
     return (

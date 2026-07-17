@@ -2,13 +2,10 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  Table2,
   Music,
   Wine,
   Save,
   Trash2,
-  Undo2,
-  Plus,
   Circle,
   Square,
 } from 'lucide-react';

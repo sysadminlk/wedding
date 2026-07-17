@@ -20,8 +20,7 @@ export default function RegisterPage() {
   const router = useRouter();
   const [error, setError] = useState('');
   const [registeredEmail, setRegisteredEmail] = useState('');
-  const { register, handleSubmit, formState: { errors, isSubmitting }, watch } = useForm<RegisterForm>();
-  const email = watch('email');
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<RegisterForm>();
 
   useEffect(() => {
     if (registeredEmail) {
