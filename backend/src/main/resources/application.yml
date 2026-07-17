@@ -9,7 +9,7 @@ spring:
       on-profile: dev
 
 server:
-  port: 8080
+  port: 7070
 
 spring.datasource:
   url: jdbc:postgresql://localhost:5432/weddingwire
@@ -84,7 +84,7 @@ spring:
       on-profile: production
 
 server:
-  port: 8080
+  port: 7070
 
 spring.datasource:
   url: ${SPRING_DATASOURCE_URL}
