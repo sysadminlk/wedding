@@ -4,7 +4,6 @@ import com.itextpdf.html2pdf.HtmlConverter;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
@@ -79,12 +78,8 @@ public class PdfExportService {
     }
 
     private byte[] convertToPdf(String html) {
-        try {
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
             HtmlConverter.convertToPdf(html, out);
             return out.toByteArray();
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to generate PDF", e);
-        }
     }
 }
