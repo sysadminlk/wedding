@@ -1,6 +1,7 @@
-package com.weddingwire.gift;
+﻿package com.weddingwire.gift;
 
 import jakarta.validation.constraints.NotNull;
+import java.util.UUID;
 import jakarta.validation.constraints.Positive;
 import lombok.Data;
 import java.math.BigDecimal;

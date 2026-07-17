@@ -1,4 +1,4 @@
-package com.weddingwire.installer;
+﻿package com.weddingwire.installer;
 
 import com.weddingwire.admin.SystemConfig;
 import com.weddingwire.admin.SystemConfigRepository;
@@ -8,6 +8,7 @@ import com.weddingwire.user.User;
 import com.weddingwire.user.UserRepository;
 import com.weddingwire.user.UserTenant;
 import com.weddingwire.user.UserTenantRepository;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
