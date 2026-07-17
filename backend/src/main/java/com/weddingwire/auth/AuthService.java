@@ -6,13 +6,18 @@ import com.weddingwire.user.UserRepository;
 import com.weddingwire.user.UserTenant;
 import com.weddingwire.user.UserTenantRepository;
 import com.weddingwire.email.EmailService;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -22,6 +27,8 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final EmailService emailService;
+    private final RestTemplate restTemplate;
+    private final ObjectMapper objectMapper;
 
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
@@ -145,6 +152,60 @@ public class AuthService {
         return AuthResponse.builder()
                 .message("Password reset successful")
                 .build();
+    }
+
+    public LoginResponse googleLogin(GoogleLoginRequest request) {
+        try {
+            String tokenInfoUrl = "https://oauth2.googleapis.com/tokeninfo?id_token=" + request.getIdToken();
+            String googleResponse = restTemplate.getForObject(tokenInfoUrl, String.class);
+
+            JsonNode googleUser = objectMapper.readTree(googleResponse);
+
+            String email = googleUser.get("email").asText();
+            String name = googleUser.get("name").asText();
+            String picture = googleUser.has("picture") ? googleUser.get("picture").asText() : null;
+            boolean emailVerified = googleUser.has("email_verified") && googleUser.get("email_verified").asBoolean();
+
+            if (!emailVerified) {
+                throw new RuntimeException("Google email not verified");
+            }
+
+            User user = userRepository.findByEmail(email).orElseGet(() -> {
+                String randomPassword = UUID.randomUUID().toString();
+                User newUser = User.builder()
+                        .name(name)
+                        .email(email)
+                        .passwordHash(passwordEncoder.encode(randomPassword))
+                        .emailVerified(true)
+                        .build();
+                return userRepository.save(newUser);
+            });
+
+            UUID tenantId = userTenantRepository.findByUserId(user.getId())
+                    .stream()
+                    .findFirst()
+                    .map(UserTenant::getTenantId)
+                    .orElse(null);
+
+            String accessToken = jwtUtil.generateAccessToken(user.getId(), tenantId);
+            String refreshToken = jwtUtil.generateRefreshToken(user.getId());
+
+            log.info("Google OAuth login for email={}", email);
+
+            return LoginResponse.builder()
+                    .accessToken(accessToken)
+                    .refreshToken(refreshToken)
+                    .userId(user.getId())
+                    .name(user.getName())
+                    .email(user.getEmail())
+                    .tenantId(tenantId)
+                    .build();
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Google OAuth verification failed: {}", e.getMessage());
+            throw new RuntimeException("Invalid Google token");
+        }
     }
 
     private String generate6DigitCode() {

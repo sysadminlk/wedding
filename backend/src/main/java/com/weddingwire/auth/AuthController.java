@@ -47,4 +47,18 @@ public class AuthController {
     public ResponseEntity<AuthResponse> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         return ResponseEntity.ok(authService.resetPassword(request));
     }
+
+    @PostMapping("/google")
+    public ResponseEntity<LoginResponse> googleLogin(@Valid @RequestBody GoogleLoginRequest request, HttpServletResponse response) {
+        LoginResponse loginResponse = authService.googleLogin(request);
+
+        Cookie cookie = new Cookie("access_token", loginResponse.getAccessToken());
+        cookie.setHttpOnly(true);
+        cookie.setSecure(true);
+        cookie.setPath("/");
+        cookie.setMaxAge(3600);
+        response.addCookie(cookie);
+
+        return ResponseEntity.ok(loginResponse);
+    }
 }

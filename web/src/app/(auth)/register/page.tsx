@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import GoogleSignIn from '@/components/auth/GoogleSignIn';
 
 const registerSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -105,6 +106,24 @@ export default function RegisterPage() {
           Create Account
         </Button>
       </form>
+
+      <div className="relative my-6">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t" style={{ borderColor: 'var(--color-auth-border)' }} />
+        </div>
+        <div className="relative flex justify-center text-xs">
+          <span className="px-3 font-body" style={{ backgroundColor: 'var(--color-auth-surface)', color: 'var(--color-auth-text-secondary)' }}>
+            or sign up with
+          </span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3">
+        <GoogleSignIn text="signup_with" className="w-full" />
+        <Button variant="secondary" type="button" className="w-full text-xs" disabled>
+          Apple (coming soon)
+        </Button>
+      </div>
 
       <p className="mt-6 text-center text-sm font-body" style={{ color: 'var(--color-auth-text-secondary)' }}>
         Already have an account?{' '}

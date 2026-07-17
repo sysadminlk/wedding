@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import GoogleSignIn from '@/components/auth/GoogleSignIn';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email'),
@@ -88,12 +89,10 @@ export default function LoginPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <Button variant="secondary" type="button" className="w-full text-xs">
-          Google
-        </Button>
-        <Button variant="secondary" type="button" className="w-full text-xs">
-          Apple
+      <div className="grid grid-cols-1 gap-3">
+        <GoogleSignIn text="continue_with" className="w-full" />
+        <Button variant="secondary" type="button" className="w-full text-xs" disabled>
+          Apple (coming soon)
         </Button>
       </div>
 
