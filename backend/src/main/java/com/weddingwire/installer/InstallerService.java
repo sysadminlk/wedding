@@ -1,4 +1,4 @@
-﻿package com.weddingwire.installer;
+package com.weddingwire.installer;
 
 import com.weddingwire.admin.SystemConfig;
 import com.weddingwire.admin.SystemConfigRepository;
